@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "Neutrino oscillatons at NOvA"
+version = "0.1.0"
+description = "Project aims to use deep learning techniques to measure neutrino oscillations at the NOvA detector."
+authors = ["Aditya Marathe"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+numpy = "^1.26.1"
+scipy = "^1.11.3"
+matplotlib = "^3.8.0"
+particle = "^0.23.0"
+hepunits = "^2.3.2"
+tensorflow-io-gcs-filesystem = "0.27.0"
+tensorflow = "2.10.*"
+keras = ">=2.10.0,<2.11"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
