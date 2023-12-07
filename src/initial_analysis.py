@@ -2,6 +2,9 @@
 Functions used in the Initial Analysis notebook.
 """
 
+# TODO: Move most of these functions to a seperate script (e.g. utils.py).
+#       Code really really really needs some cleaning. 
+
 from typing import Dict
 from typing import List
 from typing import Callable

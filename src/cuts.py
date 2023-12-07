@@ -3,6 +3,50 @@ from typing import TypeAlias
 
 import pandas as pd
 
+df_rename_map = {
+    # Cuts (not used for training / testing)
+    'numuBasicQuality': 'Cuts.DetectorQuality',
+    'numuQuality': 'Cuts.DataQuality',
+    'numucontain': 'Cuts.Containment',
+    'numu2020pid': 'Cuts.PIDScore',
+    'numucosrej': 'Cuts.CosmicRej',
+    '3flavourveto': 'Cuts.Veto',
+    'numufull': 'Cuts.Full',
+    # MC Truth
+    'trueEnu': 'MCTruth.ENu',
+    # Derived Quant.
+    'pmu': 'Derived.PMu',
+    'pt': 'Derived.TransPMu',
+    'ptp': 'Derived.TransPtoPRatio',
+    'recoq2': 'Derived.QSquared',
+    # Reconstructed Qant.
+    'cosBeamFirst': 'Reconstructed.CosBeamFirst',
+    'rec.energy.numu.hadclust.calE': 'Reconstructed.HadClust.CalE',
+    'rec.energy.numu.hadclust.nhit': 'Reconstructed.HadClust.NHits',
+    'rec.energy.numu.hadtrkE': 'Reconstructed.HadClust.TrackE',
+    'rec.energy.numu.lstmmuon': 'Reconstructed.LSTM.EMu',
+    'rec.energy.numu.lstmnu': 'Reconstructed.LSTM.ENu',
+    # Pre-selection CVN
+    'rec.sel.cvnloosepreselptp.cosmicid': 'Selection.PreSelCVN.CosmicID',
+    'rec.sel.cvnloosepreselptp.ncid': 'Selection.PreSelCVN.NCID',
+    'rec.sel.cvnloosepreselptp.nueid': 'Selection.PreSelCVN.NuEID',
+    'rec.sel.cvnloosepreselptp.numuid': 'Selection.PreSelCVN.NuMuID',
+    # Selection and PIDs
+    'rec.sel.contain.cosbakcell': 'Selection.Cosmic.BackCell',
+    'rec.sel.remid.pid': 'Selection.REMID.PID',
+    'rec.sel.scann.scpid': 'Selection.SCPID',
+    # Time Slice
+    'rec.slc.ncontplanes': 'TimeSlice.NContPlanes',
+    'rec.slc.nhit': 'TimeSlice.NHits',
+    # Reconstructed Tracks
+    'rec.trk.kalman.ntracks': 'Track.Kalman.NTracks'
+}
+
+
+def rename_df_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    return df.rename(columns=df_rename_map)
+
 
 def numu_quality_cut(df: pd.DataFrame) -> pd.Series:
     return df['numuQuality']
