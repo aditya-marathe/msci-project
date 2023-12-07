@@ -9,14 +9,14 @@ from NuMI respectively.
 
 ![NOvA Far Detector](https://novaexperiment.fnal.gov/wp-content/uploads/2018/03/FarDet.jpg)
 
-*Fig 1*: The NOvA far detector. (Credit: Fermilab)
+*Figure 1*: The NOvA far detector. (Credit: Fermilab)
 
 ![NOvA Far Detector Events](https://nusoft.fnal.gov/nova/public/img/FD-evt-echo.gif)
 
-*Fig 2*: Live event display of the NOvA far detector. Updates when you refresh the page. (Credit: Fermilab)
+*Figure 2*: Live event display of the NOvA far detector. Updates when you refresh the page. (Credit: Fermilab)
 
 More information [here](https://novaexperiment.fnal.gov/).
 
 ## Project aim
 
-Improve the selection of $\nu_\mu$ events at the far detector using deep learning techniques. The current analysis procedure applies strict and inefficient cuts based on track containment (also, cuts based on CVN PID score).
+Improve the selection of $`\nu_\mu`$ events at the far detector using deep learning techniques. The current analysis procedure applies strict and inefficient cuts based on track containment (also, cuts based on CVN PID score).
