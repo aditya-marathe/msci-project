@@ -16,6 +16,7 @@ __all__ = [
     'LocalDatasets',
     'load_nova_sample',
     'custom_subplots',
+    'labelled_hist'
 ]
 
 from typing import Any
@@ -304,78 +305,86 @@ _ALIGNMENTS: TypeAlias = Literal['left', 'mid', 'right']
 _ORIENTATIONS: TypeAlias = Literal['vertical', 'horizontal']
 
 
-def _labelled_hist_factory(ax: Axes) -> Callable[..., Any]:
-    """\
+def labelled_hist(
+        ax: Axes,
+        data: npt.ArrayLike,
+        bins: int | Sequence[float] | str | None = None,
+        range_: tuple[float, float] | None = None,
+        density: bool = False,
+        weights: npt.ArrayLike | None = None,
+        cumulative: bool = False,
+        bottom: npt.ArrayLike | None = None,
+        histtype: _HIST_TYPES = 'bar',
+        align: _ALIGNMENTS = 'mid',
+        orientation: _ORIENTATIONS = 'vertical',
+        rwidth: float | int | None = None,
+        log: bool = False,
+        color: str | None = None,
+        label: str | None = None,
+        stacked: bool = False,
+        **kwargs
+    ) -> tuple[npt.ArrayLike, 
+                npt.ArrayLike, 
+                BarContainer | Polygon | list[BarContainer | Polygon]]:
     
-    """
+    return_args = ax.hist(
+        data,
+        bins=bins,
+        range=range_,
+        density=density,
+        weights=weights,
+        cumulative=cumulative,
+        bottom=bottom,
+        histtype=histtype,
+        align=align,
+        orientation=orientation,
+        rwidth=rwidth,
+        log=log,
+        color=color,
+        stacked=stacked,
+        **kwargs
+    )
 
-    def _labelled_hist(
-            data: npt.ArrayLike,
-            bins: int | Sequence[float] | str | None = None,
-            range_: tuple[float, float] | None = None,
-            density: bool = False,
-            weights: npt.ArrayLike | None = None,
-            cumulative: bool = False,
-            bottom: npt.ArrayLike | None = None,
-            histtype: _HIST_TYPES = 'bar',
-            align: _ALIGNMENTS = 'mid',
-            orientation: _ORIENTATIONS = 'vertical',
-            rwidth: float | int | None = None,
-            log: bool = False,
-            color: str | None = None,
-            label: str | None = None,
-            stacked: bool = False,
-            **kwargs
-        ) -> tuple[npt.ArrayLike, 
-                   npt.ArrayLike, 
-                   BarContainer | Polygon | list[BarContainer | Polygon]]:
-        
-        return_args = ax.hist(
-            data,
-            bins=bins,
-            range=range_,
-            density=density,
-            weights=weights,
-            cumulative=cumulative,
-            bottom=bottom,
-            histtype=histtype,
-            align=align,
-            orientation=orientation,
-            rwidth=rwidth,
-            log=log,
-            color=color,
-            stacked=stacked,
-            **kwargs
-        )
+    patches = return_args[-1]
 
-        patches = return_args[-1]
+    if not isinstance(patches, BarContainer):
+        raise Exception('')
 
-        if not isinstance(patches, BarContainer):
-            raise Exception('')
+    # Adds the text label
+    _update_axes_labels(
+        ax=ax,
+        data=data,
+        # TODO: Fix this. Why do I even need bar container anyway?
+        #       Who wrote this horrible function? (It was me :( ...)
+        bar_container=return_args[-1],  # type: ignore
+        label=label or 'Data'
+    )
 
-        # Adds the text label
-        _update_axes_labels(
-            ax=ax,
-            data=data,
-            # TODO: Fix this. Why do I even need bar container anyway?
-            #       Who wrote this horrible function? (It was me :( ...)
-            bar_container=return_args[-1],  # type: ignore
-            label=label or 'Data'
-        )
-
-        return return_args
+    return return_args
 
 
-    _labelled_hist.__doc__ = """\
-    Notes
-    -----
-    
-    Original docstring
-    ------------------
-    {}
-    """.format(plt.hist.__doc__)
+labelled_hist.__doc__ = """\
+Parameters
+----------
+ax: matplotlib.axes.Axes
+    The parent axes.
 
-    return _labelled_hist
+*args, **kwargs:
+    Parameters for `matplotlib.pyplot.hist` (see below).
+
+Notes
+-----
+Wraps the `matplotlib.pyplot.hist` function with the added functionality of 
+also adding a `Text` widget on the Axes area which contains information about
+the plotted distribution. This information includes: the label name, the number
+of samples, the mean and the standard deviation.
+
+This feature was inspired by plots produced by CERN's ROOT.
+
+Original docstring
+------------------
+{}
+""".format(plt.hist.__doc__)
 
 
 def custom_subplots(
@@ -412,12 +421,10 @@ def custom_subplots(
         for ax in axs:
             _set_axes_formatting(ax)
             ax._n_labelled_hist: int = 0  # type: ignore
-            ax.labelled_hist = _labelled_hist_factory(ax)
 
     else:
         _set_axes_formatting(axs)
         axs._n_labelled_hist: int = 0  # type: ignore
-        axs.labelled_hist = _labelled_hist_factory(axs)
 
     return fig, axs
 
@@ -427,9 +434,9 @@ Notes
 -----
 Wraps `matplotlib.pyplot.subplots` with some extra functionality.
 
-The Axes object(s) returned have an additional `labelled_hist` method which
-allow the user to add a nice little text label which displays the mean and the 
-standard deviation of the distribution.
+The Axes object(s) returned support the `labelled_hist` method which allows the 
+user to add a nice little text label which displays the mean and the standard 
+deviation of the distribution.
 
 Also, the plot aesthetics are already formatted to reduce repeated code. :)
 
