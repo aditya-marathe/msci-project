@@ -14,6 +14,7 @@ from __future__ import with_statement
 
 __all__ = [
     'NOVA_NUMU_ENERGY_BINS',
+    'NOVA_NUMU_ENERGY_BINS_5GEV',
     'NOVA_NUE_ENERGY_BINS',
     'LocalDatasets',
     'load_nova_sample',
@@ -53,6 +54,7 @@ _ORIENTATIONS: TypeAlias = Literal['vertical', 'horizontal']
 
 # Source: CAFAna Tutorial by Gavin S. Davis (Iowa State University)
 NOVA_NUMU_ENERGY_BINS = np.linspace(0, 10, 100)
+NOVA_NUMU_ENERGY_BINS_5GEV = np.linspace(0, 5, 50)
 NOVA_NUE_ENERGY_BINS = np.linspace(0, 10, 40)
 
 
