@@ -1,0 +1,45 @@
+{
+    "Cuts": [
+        "numuQuality",
+        "numuBasicQuality",
+        "numu2020pid",
+        "isNuMuCC"
+    ],
+    "Transforms": [
+        "quality_cut_transform",
+        "vaild_pid_transform",
+        "pid_cut_transform",
+        "background_cut_transform",
+        "high_energy_cut_transform"
+    ],
+    "XDataCols": [
+        "pmu",
+        "pt",
+        "ptp",
+        "recoq2",
+        "cosBeamFirst",
+        "rec.energy.numu.hadclust.calE",
+        "rec.energy.numu.hadclust.nhit",
+        "rec.energy.numu.hadtrkE",
+        "rec.energy.numu.lstmmuon",
+        "rec.sel.cvnloosepreselptp.cosmicid",
+        "rec.sel.cvnloosepreselptp.ncid",
+        "rec.sel.cvnloosepreselptp.nueid",
+        "rec.sel.cvnloosepreselptp.numuid",
+        "rec.sel.contain.cosbakcell",
+        "rec.sel.remid.pid",
+        "rec.sel.scann.scpid",
+        "rec.slc.ncontplanes",
+        "rec.slc.nhit",
+        "rec.trk.kalman.ntracks"
+    ],
+    "YDataCols": [
+        "trueEnu"
+    ],
+    "Log": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-01-19--00-33.json",
+    "Model": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-01-19--00-33.h5",
+    "History": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\history\\Hist--2024-01-19--00-33.json",
+    "Comments": "My first ever working(-ish) model! :D\n-------------------------------------\n\nOptimizer: Adam(learning rate = 1E-3)\nLoss: MSE\n\nEpochs: 100\nCallbacks: EarlyStopping(patience = 10)\n\nI am using sample weights that I initialised like so:\n```\nsample_weight = np.ones(shape=tt_data['TrainY'].shape)\nsample_weight[tt_data['TrainY'] <= 1.5] = 6.\nsample_weight[tt_data['TrainY'] >= 2.2] = 2.\n```\n\n\n",
+    "Time": "19-01-2024 00:33",
+    "Flagged": false
+}

@@ -13,6 +13,8 @@ from __future__ import print_function
 from __future__ import with_statement
 
 __all__ = [
+    'NOVA_NUMU_ENERGY_BINS',
+    'NOVA_NUE_ENERGY_BINS',
     'LocalDatasets',
     'load_nova_sample',
     'custom_subplots',
@@ -39,11 +41,19 @@ from matplotlib.axes import Axes
 from matplotlib.container import BarContainer
 from matplotlib.patches import Polygon
 
-PLOT_FORMATTING: dict[str, Any] = {
+_PLOT_FORMATTING: dict[str, Any] = {
     'MAJOR_TICKS_SIZE': 7.,
     'MINOR_TICKS_SIZE': 3.5,
     # TODO: Also add font size and other stuff here.
 }
+
+_HIST_TYPES: TypeAlias = Literal['bar', 'barstacked', 'step', 'stepfilled']
+_ALIGNMENTS: TypeAlias = Literal['left', 'mid', 'right']
+_ORIENTATIONS: TypeAlias = Literal['vertical', 'horizontal']
+
+# Source: CAFAna Tutorial by Gavin S. Davis (Iowa State University)
+NOVA_NUMU_ENERGY_BINS = np.linspace(0, 10, 100)
+NOVA_NUE_ENERGY_BINS = np.linspace(0, 10, 40)
 
 
 class LocalDatasets:
@@ -52,6 +62,8 @@ class LocalDatasets:
     #       are used to extract the local directory from the enviornment 
     #       variables.
     REALLY_MINI = 'MINI_DATA_DIR'
+    COPYMERGED_C9 = 'DATA_V2_DIR'
+    COPYMERGED_C10 = 'DATA_V3_DIR'
 
 
 def _process_h5_file_path(
@@ -75,12 +87,12 @@ def _process_h5_file_path(
 
     if not file_path.exists():
         raise FileNotFoundError(
-            'The file stored at {} does not exist.'.format(file_path)
+            'The file stored at \'{}\' does not exist.'.format(file_path)
         )
 
     if not file_path.suffix == '.h5':
         raise ValueError(
-            'The file stored at {} is not in HDF5 format.'.format(file_path)
+            'The file stored at \'{}\' is not in HDF5 format.'.format(file_path)
         )
 
     return file_path
@@ -237,12 +249,12 @@ def _set_axes_formatting(ax: Axes) -> None:
     ax.tick_params(
         which='major',
         axis='both',
-        size=PLOT_FORMATTING['MAJOR_TICKS_SIZE']
+        size=_PLOT_FORMATTING['MAJOR_TICKS_SIZE']
     )
     ax.tick_params(
         which='minor',
         axis='both',
-        size=PLOT_FORMATTING['MINOR_TICKS_SIZE']
+        size=_PLOT_FORMATTING['MINOR_TICKS_SIZE']
     )
 
 
@@ -298,11 +310,6 @@ def _update_axes_labels(
     )
 
     ax._n_labelled_hist += 1  # type: ignore
-
-
-_HIST_TYPES: TypeAlias = Literal['bar', 'barstacked', 'step', 'stepfilled']
-_ALIGNMENTS: TypeAlias = Literal['left', 'mid', 'right']
-_ORIENTATIONS: TypeAlias = Literal['vertical', 'horizontal']
 
 
 def labelled_hist(

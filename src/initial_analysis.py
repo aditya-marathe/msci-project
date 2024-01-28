@@ -2,8 +2,7 @@
 Functions used in the Initial Analysis notebook.
 """
 
-# TODO: Move most of these functions to a seperate script (e.g. utils.py).
-#       Code really really really needs some cleaning. 
+# TODO: Delete this file...
 
 from typing import Dict
 from typing import List
@@ -12,7 +11,7 @@ from typing import Optional
 from typing import Any
 from typing import TypeAlias
 
-import tkinter as tk
+import warnings
 
 import pandas as pd
 
@@ -23,6 +22,9 @@ __all__ = [
     'print_cut_flow',
     'draw_plot_info'
 ]
+
+
+warnings.warn('This file is to be deleted soon...')
 
 
 _CUT_FLOW = """\

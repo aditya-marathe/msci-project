@@ -8,6 +8,9 @@ Script contains the `Cuts` class used to define and apply cuts to NOvA simulated
 data. Also, contains pre-defined cut functions that can be either loaded into a 
 `Cuts` instance or used as is.
 """
+
+# TODO: Add more detail to some of the docstrings here...
+
 from __future__ import absolute_import
 from __future__ import annotations
 from __future__ import unicode_literals
@@ -29,16 +32,10 @@ from typing import TypeAlias
 
 import pandas as pd
 
-# TODO: I want the methods in `Cuts` to be able to modify the attributes of my 
-#       custom `DataFrame` so I can see which cuts have been applied very easily
-#       but, also, this feature can be used to ensure that the same cut is not
-#       applied twice to reduce the number of computations required.
-
-
 CutFuncType: TypeAlias = Callable[..., pd.Series]
 
 
-# Predefined cut functions 
+# Predefined cut functions (for the really mini dataset only!)
 # ---------------------------------------------------------------------------- #
 
 
@@ -72,11 +69,11 @@ def cut_numu_data_quality(df: pd.DataFrame) -> pd.Series:
     """
     # Original code used numu.tracccE, but I think what I have done 
     # here is basically the same thing... (hopefully)
-    a = df['rec.energy.numu.lstmnu'] > 0
-    b = df['rec.sel.remid.pid'] > 0
-    c = df['rec.slc.nhit'] > 20
-    d = df['rec.slc.ncontplanes'] > 4
-    e = df['rec.trk.cosmic.ntracks'] > 0
+    # a = df['rec.energy.numu.lstmnu'] > 0
+    # b = df['rec.sel.remid.pid'] > 0
+    # c = df['rec.slc.nhit'] > 20
+    # d = df['rec.slc.ncontplanes'] > 4
+    # e = df['rec.trk.cosmic.ntracks'] > 0
     # return  a & b & c & d & e  # This gives me some problems...
     return df['numuBasicQuality']
 
@@ -168,7 +165,7 @@ class Cuts:
         """
         self._cuts: dict[str, CutFuncType] = dict()
 
-    @staticmethod
+    @staticmethod  # --> Should this be a cmethod?
     def init_nova_cuts() -> 'Cuts':
         """\
         Alternative constructor for the `Cuts` class. Returns a `Cuts` object 
@@ -234,16 +231,33 @@ class Cuts:
         """
         self._cuts[name] = cut_func
 
-    def apply_cut(self, name: str, df: pd.DataFrame, passed: bool = True) -> pd.DataFrame:
+    def apply_cut(
+            self, name: str, 
+            df: pd.DataFrame, 
+            passed: bool = True
+        ) -> pd.DataFrame:
         """\
         Apply a certain cut.
         """
+        cuts_list = df.attrs.get('_applied_cuts_list')
+
         if passed:
+            if cuts_list:
+                cuts_list.append(name)
+            
             return df[self._cuts[name](df)]
+
+        if cuts_list:
+            cuts_list.append('Not ' + name)
         
         return df[~self._cuts[name](df)]
 
-    def apply_cuts(self, names: list[str], df: pd.DataFrame, passed: list[bool] | None = None) -> pd.DataFrame:
+    def apply_cuts(
+            self, 
+            names: list[str], 
+            df: pd.DataFrame, 
+            passed: list[bool] | None = None
+        ) -> pd.DataFrame:
         """\
         Apply a list of cuts.
         """
@@ -261,7 +275,12 @@ class Cuts:
 
         return result
 
-    def apply_all_cuts(self, df: pd.DataFrame, except_: list[str] | None = None, passed: list[bool] | None = None) -> pd.DataFrame:
+    def apply_all_cuts(
+            self, 
+            df: pd.DataFrame, 
+            except_: list[str] | None = None, 
+            passed: list[bool] | None = None
+        ) -> pd.DataFrame:
         """\
         Apply all the defined cuts to a Pandas `DataFrame`.
         """
