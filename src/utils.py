@@ -223,7 +223,7 @@ def load_nova_sample(
                 replace=False
             ))
         else:
-            indices = np.arange(min(n_events, file_n_events))
+            indices = slice(min(n_events, file_n_events))
 
         df = pd.DataFrame(
             data={

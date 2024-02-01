@@ -111,11 +111,8 @@ def cut_numu_containment(df: pd.DataFrame) -> pd.Series:
     df : pd.DataFrame
         Target `DataFrame`.
     """
-    # Most of the keys from the original code are not in the "mini"
-    # dataset! So I am going to cheat a little...
-    a = df['numucontain']
-    b = df['rec.sel.contain.cosbakcell'] > 7
-    return  a & b
+    # b = df['rec.sel.contain.cosbakcell'] > 7
+    return  df['numucontain']
 
 
 def cut_numu_cosmic_rej(df: pd.DataFrame) -> pd.Series:
@@ -232,25 +229,27 @@ class Cuts:
         self._cuts[name] = cut_func
 
     def apply_cut(
-            self, name: str, 
+            self, 
+            name: str, 
             df: pd.DataFrame, 
             passed: bool = True
         ) -> pd.DataFrame:
         """\
         Apply a certain cut.
         """
-        cuts_list = df.attrs.get('_applied_cuts_list')
-
-        if passed:
-            if cuts_list:
-                cuts_list.append(name)
-            
-            return df[self._cuts[name](df)]
-
-        if cuts_list:
-            cuts_list.append('Not ' + name)
+        df = df.copy()
         
-        return df[~self._cuts[name](df)]
+        if passed:            
+            result = df[self._cuts[name](df)] 
+        else:       
+            result = df[~self._cuts[name](df)]
+
+        cuts_list = result.attrs.get('_applied_cuts_list', -1)
+
+        if isinstance(cuts_list, list):
+            cuts_list.append((not passed) * 'Not ' + name)
+
+        return result
 
     def apply_cuts(
             self, 
