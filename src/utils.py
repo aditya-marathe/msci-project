@@ -28,6 +28,8 @@ from typing import Sequence
 from typing import Literal
 from typing import TypeAlias
 
+import warnings
+
 import pathlib
 
 import h5py
@@ -204,6 +206,13 @@ def load_nova_sample(
     These allow you to keep track of and check which cuts have been applied to 
     produce a certain DataFrame.
     """
+    warnings.warn(
+        'Function `load_nova_sample` has been deprecated, use the `NOvAData` '
+        'class from \'data.py\' instead!', 
+        DeprecationWarning, 
+        stacklevel=2
+    )
+
     _process_h5_file_path(file_path)
 
     random = np.random.RandomState(random_state)

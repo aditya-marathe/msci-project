@@ -1,10 +1,11 @@
-"""
+"""\
 src / data.py
 --------------------------------------------------------------------------------
 
 Aditya Marathe
 
 """
+
 from __future__ import absolute_import
 from __future__ import annotations
 from __future__ import unicode_literals
@@ -21,6 +22,14 @@ import numpy.typing as npt
 import h5py
 
 import pandas as pd
+
+# Local
+
+from detectors import *
+
+
+# TODO: Some of the functions here can be parallelised easily, could save time
+#       for much large datasets, so something to consier for future updates...
 
 
 # Constants --------------------------------------------------------------------
@@ -285,6 +294,86 @@ def _get_branch_df(
 # Class(es) --------------------------------------------------------------------
 
 
+class Var:
+    """
+    A variable inside of the NOvA dataset.
+    """
+    def __init__(self, branch: str, var: str) -> None:
+        """\
+        `Var` constructor.
+
+        Args
+        ----
+        branch: str
+            The branch name or "parent key" inside the HDF5 database.
+
+        var: str
+            The variable name or "child key" inside the HDF5 databse.
+        """
+        self._branch = branch
+        self._var = var
+
+    def get_df(self, df: pd.DataFrame) -> pd.Series:
+        """\
+        Gets the data for this variable from a NOvA Pandas `DataFrame` / table.
+
+        Args
+        ----
+        df: pd.DataFrame
+            Pandas data frame of the NOvA data.
+
+        Returns
+        -------
+        pd.Series
+            The sample of data for this variable in the given NOvA data.
+        """
+        return df[self._branch + '.' + self._var]
+
+    def get_h5(self, h5file: h5py.File) -> npt.NDArray:
+        """\
+        Gets the data for this variable from a NOvA dataset.
+
+        Args
+        ----
+        h5file: h5py.File
+            An HDF5 database of the NOvA data.
+
+        Returns
+        -------
+        npt.NDArray
+            The sample of data for this variable in the given NOvA data.
+        """
+        return _get_var(h5file, self._branch, self._var)
+
+    def get(self, data: NOvAData) -> pd.Series:
+        """\
+        Gets the data for this variable from a NOvA dataset.
+
+        Args
+        ----
+        data: NOvAData
+            A NOvAData object.
+
+        Returns
+        -------
+        pd.Series
+            The sample of data for this variable in the given NOvA data.
+        """
+        return self.get_df(data.table)
+
+    def __call__(self, data: NOvAData) -> pd.Series:
+        """\
+        Making the class callable, for some syntactic sugar.
+        """
+        return self.get(data)
+
+    def __str__(self) -> str:
+        return f'{self._branch}.{self._var}'
+
+    def __repr__(self) -> str:
+        return f'Var(name=\'{self._branch}.{self._var}\')'
+
+
 class NOvAData:
     """\
     Used to load and store a sample of the simulated NOvA dataset.
@@ -305,15 +394,37 @@ class NOvAData:
         - Applying the latest NOvA cuts / any custom cuts.
 
     """
-    def __init__(self, h5dirs: list[str]) -> None:
+    def __init__(self, table: pd.DataFrame) -> None:
         """\
-        NOvA data object constructor.
+        `NOvAData` constructor.
+
+        Args
+        ----
+        table: pd.DataFrame
+            Table containing NOvA data.
+        """
+        self.table = table
+        self._remove_nansense_data()
+        self._applied_cuts = list()
+
+    @staticmethod
+    def init_from_copymerge_h5(h5dirs: list[str]) -> 'NOvAData':
+        """\
+        Alternative `NOvAData` constructor.
 
         Args
         ----
         h5dir: list
             List of copymerged HDF5 files.
+
+        Returns
+        -------
+        NoVAData
+            An initialised `NOvAData` object.
         """
+        # TODO: Add an option to specify which columns you need, could save some 
+        #       memory and possibly time...
+
         tables = list()
 
         for h5dir in h5dirs:
@@ -365,9 +476,98 @@ class NOvAData:
 
             tables.append(table)
 
-        self.table = pd.concat(tables)
+        concat_table = pd.concat(tables)
 
+        return NOvAData(table=concat_table)
+
+    def _remove_nansense_data(self) -> None:
+        """\
+        Helper function: Removes unwanted NaN records in the table.
+        """
         # Account for any NaN values in the table
         for column_name, fill_value in _TABLE_COL_FILLNA_MAP.items():
             if column_name in self.table.columns:
-                self.table[column_name].fillna(fill_value, inplace=True)        
+                self.table[column_name].fillna(fill_value, inplace=True)
+
+        # So, sometimes events can be a bit too messy to reconstruct, and we 
+        # may encounter some rows the the energy estimator branch which may have
+        # NaN values... these can be simply dropped. 
+        # Notes: This could also be added to the quality cuts... 
+        self.table.dropna(
+            subset=[n for n in df.columns if n.startswith('rec.energy')], 
+            inplace=True
+        )
+
+    def fill_ana_flags(self) -> None:
+        """\
+        Function fills the table with flags to streamline data analysis.
+        """
+        table_copy = self.table.copy()
+
+        try:
+            is_nu_event = table_copy['rec.mc.nnu'] > 0
+
+            # Event interaction
+
+            table_copy['ana.mc.flag.isCC'] = (
+                table_copy['rec.mc.nu.iscc'] * is_nu_event
+            )
+            table_copy['ana.mc.flag.isNC'] = (
+                (table_copy['ana.mc.flag.isCC'] < 1) * is_nu_event
+            )
+
+            # Specific event interactions
+
+            table_copy['ana.mc.flag.isNuMu'] = (
+                table_copy['rec.mc.nu.pdg'] == 14
+            )
+            table_copy['ana.mc.flag.isANuMu'] = (
+                table_copy['rec.mc.nu.pdg'] == -14
+            )
+
+            table_copy['ana.mc.flag.isNuE'] = (
+                table_copy['rec.mc.nu.pdg'] == 12
+            )
+            table_copy['ana.mc.flag.isANuE'] = (
+                table_copy['rec.mc.nu.pdg'] == -12
+            )
+
+            table_copy['ana.mc.flag.isNuMuCC'] = (
+                table_copy['ana.mc.flag.isNuMu'] 
+                    * table_copy['ana.mc.flag.isCC']
+            )
+            table_copy['ana.mc.flag.isANuMuCC'] = (
+                table_copy['ana.mc.flag.isANuMu'] 
+                    * table_copy['ana.mc.flag.isCC']
+            )
+
+            table_copy['ana.mc.flag.isNuECC'] = (
+                table_copy['ana.mc.flag.isNuE'] 
+                    * table_copy['ana.mc.flag.isCC']
+            )
+            table_copy['ana.mc.flag.isANuECC'] = (
+                table_copy['ana.mc.flag.isANuE'] 
+                    * table_copy['ana.mc.flag.isCC']
+            )
+        except KeyError:
+            raise KeyError(
+                'Analysis flags were not set due to missing key(s) / column(s).'
+            )
+        else:
+            # Replace with the updated table. This is done to ensure that there
+            # are no unfinished operations (due to exceptions) becasue that
+            # could result in weird half filled rows/columns.
+            self.table = table_copy
+
+    def fill_ana_track_kinematics(self) -> None:
+        NotImplemented
+
+    def train_test_split(
+            self,
+            x_cols: list[str],
+            y_cols: list[str],
+            train_ratio: float = 0.8,
+            shuffle: bool = False,
+            random_state: np.random.RandomState | None = None
+        ) -> None:
+        NotImplemented 
