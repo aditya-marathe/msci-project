@@ -16,6 +16,7 @@ __all__ = [
     'NOVA_NUMU_ENERGY_BINS',
     'NOVA_NUMU_ENERGY_BINS_5GEV',
     'NOVA_NUE_ENERGY_BINS',
+    'Datasets',
     'LocalDatasets',
     'load_nova_sample',
     'custom_subplots',
@@ -28,7 +29,11 @@ from typing import Sequence
 from typing import Literal
 from typing import TypeAlias
 
+import os
+
 import warnings
+
+from dotenv import load_dotenv
 
 import pathlib
 
@@ -60,6 +65,29 @@ NOVA_NUMU_ENERGY_BINS_5GEV = np.linspace(0, 5, 50)
 NOVA_NUE_ENERGY_BINS = np.linspace(0, 10, 40)
 
 
+class Datasets:
+    """\
+    Class containing the locally stored datasets.
+    """
+    def __init__(self) -> None:
+        """
+        `Datasets` constructor.
+
+        Notes
+        -----
+        - Must be re-initialised if the `.env` file is updated with new 
+          datasets! 
+        - Also, when updating the `.env` make sure to follow the convention of
+          adding a '_DIR' at the end, otherwise it will not be included!
+        """
+        load_dotenv()
+
+        for _dataset_name, _dataset_dir in os.environ.items():
+            if _dataset_name.endswith('_DIR'):
+                setattr(self, _dataset_name, _dataset_dir)
+
+
+# DEPRECATED! Use `src.utils.Datasets` instead.
 class LocalDatasets:
     # Note: Enum contains the locally saved datasets. Their directories are 
     #       stored in the environment variables. This enum stores the keys that
@@ -168,6 +196,7 @@ def _add_df_attrs(
     return df
 
 
+# DEPRECATED! Use `src.ana.NOvAData` instead.
 def load_nova_sample(
         file_path: str | pathlib.Path,
         n_events: int = 1_000_000,

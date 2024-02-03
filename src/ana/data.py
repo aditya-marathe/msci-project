@@ -1,9 +1,8 @@
 """\
-src / data.py
+src / ana / data.py
 --------------------------------------------------------------------------------
 
 Aditya Marathe
-
 """
 
 from __future__ import absolute_import
@@ -291,87 +290,7 @@ def _get_branch_df(
     return mini_table
 
 
-# Class(es) --------------------------------------------------------------------
-
-
-class Var:
-    """
-    A variable inside of the NOvA dataset.
-    """
-    def __init__(self, branch: str, var: str) -> None:
-        """\
-        `Var` constructor.
-
-        Args
-        ----
-        branch: str
-            The branch name or "parent key" inside the HDF5 database.
-
-        var: str
-            The variable name or "child key" inside the HDF5 databse.
-        """
-        self._branch = branch
-        self._var = var
-
-    def get_df(self, df: pd.DataFrame) -> pd.Series:
-        """\
-        Gets the data for this variable from a NOvA Pandas `DataFrame` / table.
-
-        Args
-        ----
-        df: pd.DataFrame
-            Pandas data frame of the NOvA data.
-
-        Returns
-        -------
-        pd.Series
-            The sample of data for this variable in the given NOvA data.
-        """
-        return df[self._branch + '.' + self._var]
-
-    def get_h5(self, h5file: h5py.File) -> npt.NDArray:
-        """\
-        Gets the data for this variable from a NOvA dataset.
-
-        Args
-        ----
-        h5file: h5py.File
-            An HDF5 database of the NOvA data.
-
-        Returns
-        -------
-        npt.NDArray
-            The sample of data for this variable in the given NOvA data.
-        """
-        return _get_var(h5file, self._branch, self._var)
-
-    def get(self, data: NOvAData) -> pd.Series:
-        """\
-        Gets the data for this variable from a NOvA dataset.
-
-        Args
-        ----
-        data: NOvAData
-            A NOvAData object.
-
-        Returns
-        -------
-        pd.Series
-            The sample of data for this variable in the given NOvA data.
-        """
-        return self.get_df(data.table)
-
-    def __call__(self, data: NOvAData) -> pd.Series:
-        """\
-        Making the class callable, for some syntactic sugar.
-        """
-        return self.get(data)
-
-    def __str__(self) -> str:
-        return f'{self._branch}.{self._var}'
-
-    def __repr__(self) -> str:
-        return f'Var(name=\'{self._branch}.{self._var}\')'
+# Class ------------------------------------------------------------------------
 
 
 class NOvAData:
@@ -408,7 +327,7 @@ class NOvAData:
         self._applied_cuts = list()
 
     @staticmethod
-    def init_from_copymerge_h5(h5dirs: list[str]) -> 'NOvAData':
+    def init_from_copymerge_h5(h5dirs: list[str]) -> "NOvAData":
         """\
         Alternative `NOvAData` constructor.
 
@@ -494,13 +413,27 @@ class NOvAData:
         # NaN values... these can be simply dropped. 
         # Notes: This could also be added to the quality cuts... 
         self.table.dropna(
-            subset=[n for n in df.columns if n.startswith('rec.energy')], 
+            subset=[
+                n for n in self.table.columns if n.startswith('rec.energy')
+            ], 
             inplace=True
         )
 
-    def fill_ana_flags(self) -> None:
+    def fill_ana_flags(self, inplace: bool = False) -> "NOvAData" | None:
         """\
         Function fills the table with flags to streamline data analysis.
+
+        Args
+        ----
+        inplace: bool
+            If `True`, this function adds the new columns to this table, if 
+            `False` then it returns a new `NOvAData` with the updated table. 
+            Defaults to `False`.
+
+        Returns
+        -------
+        NOvAData | None
+            If `inplace` was set to `False` a new `NOvAData` object is returned.
         """
         table_copy = self.table.copy()
 
@@ -557,10 +490,81 @@ class NOvAData:
             # Replace with the updated table. This is done to ensure that there
             # are no unfinished operations (due to exceptions) becasue that
             # could result in weird half filled rows/columns.
-            self.table = table_copy
+            if inplace:
+                self.table = table_copy
+                return
 
-    def fill_ana_track_kinematics(self) -> None:
-        NotImplemented
+            return NOvAData(table=table_copy)
+
+    def fill_ana_track_kinematics(self, inplace: bool = False) -> None:
+        """\
+        Fill the table with the calculated track kinematics.
+
+        Args
+        ----
+        inplace: bool
+            If `True`, this function adds the new columns to this table, if 
+            `False` then it returns a new `NOvAData` with the updated table. 
+            Defaults to `False`.
+
+        Returns
+        -------
+        NOvAData | None
+            If `inplace` was set to `False` a new `NOvAData` object is returned.
+        """
+        table_copy = self.table
+
+        # TODO: What is point S? Why is the same point used for all calculations
+        #       of beam direction?
+        fd_r_beam_dir = calculate_beam_direction_at_fd(POINT_S)
+
+        try:
+            table_copy['ana.trk.kalman.tracks.cosBeam'] = (
+                table_copy['rec.trk.kalman.tracks.dir.x'] * fd_r_beam_dir[0] 
+                + table_copy['rec.trk.kalman.tracks.dir.y'] * fd_r_beam_dir[1] 
+                + table_copy['rec.trk.kalman.tracks.dir.z'] * fd_r_beam_dir[2]
+            )
+
+            table_copy['ana.trk.kalman.tracks.PtToPmu'] = (
+                1 - table_copy['ana.trk.kalman.tracks.cosBeam']**2
+            )**0.5
+
+            table_copy['ana.trk.kalman.tracks.Pmu'] = np.sqrt(
+                table_copy['rec.energy.numu.lstmmuon']**2 - (105.658E-3)**2
+            )
+            table_copy['ana.trk.kalman.tracks.Pt'] = (
+                table_copy['ana.trk.kalman.tracks.PtToPmu'] 
+                * table_copy['ana.trk.kalman.tracks.Pmu']
+            )
+
+            table_copy['ana.trk.kalman.tracks.Qsquared'] = (
+                2 * table_copy['rec.energy.numu.lstmnu'] 
+                * (
+                    table_copy['rec.energy.numu.lstmmuon'] 
+                    - table_copy['ana.trk.kalman.tracks.Pmu'] 
+                    * table_copy['ana.trk.kalman.tracks.cosBeam']
+                ) 
+                - (105.658E-3)**2
+            )
+            table_copy['ana.trk.kalman.tracks.W'] = (
+                (
+                    0.938272**2 + 2 * 0.938272 * (
+                        table_copy['rec.energy.numu.lstmnu'] 
+                        - table_copy['rec.energy.numu.lstmmuon']
+                    ) - table_copy['ana.trk.kalman.tracks.Qsquared']
+                )**0.5
+            )
+        except KeyError:
+            raise KeyError(
+                'Analysis track kinematic variables were not set due to missing'
+                ' key(s) / column(s).'
+            )
+        else:
+            if inplace:
+                self.table = table_copy
+                return
+
+            return NOvAData(table=table_copy)
 
     def train_test_split(
             self,

@@ -175,11 +175,11 @@ def calculate_beam_direction_at_fd(
         fd_r_centre_from_point / np.linalg.norm(fd_r_centre_from_point)
     )
 
-    fd_r_beam_front = convNuMItoFD(
+    fd_r_beam_front = conv_numi_to_fd(
         POINT_S + (fd_centre_dist - 29.942) * fd_r_centre_from_point_unit
     )
 
-    fd_r_beam_back = convNuMItoFD(
+    fd_r_beam_back = conv_numi_to_fd(
         POINT_S + (fd_centre_dist + 29.942) * fd_r_centre_from_point_unit
     )
 
@@ -219,11 +219,11 @@ def calculate_beam_direction_at_nd(
         nd_r_centre_from_point / np.linalg.norm(nd_r_centre_from_point)
     )
 
-    nd_r_beam_front = convNuMItoND(
+    nd_r_beam_front = conv_numi_to_nd(
         POINT_S + (nd_centre_dist - 29.942) * nd_r_centre_from_point_unit
     )
 
-    nd_r_beam_back = convNuMItoND(
+    nd_r_beam_back = conv_numi_to_nd(
         POINT_S + (nd_centre_dist + 29.942) * nd_r_centre_from_point_unit
     )
 
