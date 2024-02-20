@@ -69,9 +69,14 @@ class Datasets:
     """\
     Class containing the locally stored datasets.
     """
-    def __init__(self) -> None:
+    def __init__(self, verbose: bool = True) -> None:
         """
         `Datasets` constructor.
+
+        Parameters
+        ----------
+        verbose: bool
+            Prints out the found datasets.
 
         Notes
         -----
@@ -82,9 +87,13 @@ class Datasets:
         """
         load_dotenv()
 
+        if verbose:
+            print('Datasets found:')
+
         for _dataset_name, _dataset_dir in os.environ.items():
             if _dataset_name.endswith('_DIR'):
                 setattr(self, _dataset_name, _dataset_dir)
+                print(f'- {_dataset_name}')
 
 
 # DEPRECATED! Use `src.utils.Datasets` instead.
@@ -410,7 +419,7 @@ def labelled_hist(
     return return_args
 
 
-labelled_hist.__doc__ = """\
+labelled_hist.__doc__ = f"""\
 Parameters
 ----------
 ax: matplotlib.axes.Axes
@@ -430,8 +439,8 @@ This feature was inspired by plots produced by CERN's ROOT.
 
 Original docstring
 ------------------
-{}
-""".format(plt.hist.__doc__)
+{plt.hist.__doc__}
+"""
 
 
 def custom_subplots(

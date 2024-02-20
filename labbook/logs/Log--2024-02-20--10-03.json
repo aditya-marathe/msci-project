@@ -1,0 +1,31 @@
+{
+    "Cuts": [
+        "Detector Quality",
+        "Data Quality",
+        "CVN PID Score",
+        "Cosmic Rej."
+    ],
+    "Transforms": [
+        "tf_290124_positive_energies",
+        "tf_290124_valid_pid",
+        "tf_120224_first_prong",
+        "tf_200224_add_cut_vars"
+    ],
+    "XDataCols": [
+        "rec.energy.numu.lstmmuon",
+        "rec.energy.numu.recomuonE",
+        "rec.sel.cvnloosepreselptp.cosmicid",
+        "rec.sel.cvnloosepreselptp.ncid",
+        "rec.sel.cvnloosepreselptp.numuid",
+        "rec.sel.remid.pid",
+        "rec.sel.scann.scpid"
+    ],
+    "YDataCols": "ana.mc.flag.isNuMuCC",
+    "HyperParameters": {},
+    "ModelDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-02-20--10-03.h5",
+    "HistoryDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\history\\Hist--2024-02-20--10-03.json",
+    "LogDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-02-20--10-03.json",
+    "Time": "20-02-2024 10:03",
+    "Comments": "Classifier #2",
+    "Flagged": false
+}

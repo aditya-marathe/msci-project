@@ -104,17 +104,24 @@ _VARS_TO_EXTRACT = {
         'ntracks'
     ],
     'rec.trk.kalman': [
-        'idxremid',
-        'ntracks'
+        'ntracks',
+        'ntracks2d'
     ],
     'rec.trk.kalman.tracks': [
         'dir.x',  # --> Needed for calculating kinematics
         'dir.y',
         'dir.z',
+        'start.x',
+        'start.y',
+        'start.z',
+        'len',
+        'muonid',
+        'rempid',
         'nhit',
         'nhitx',
         'nhity',
         'calE',  # Calorimetric energy of all hits in the prong
+        'overlapE',
         'nplane',
         'maxplanecont'
     ],
@@ -125,6 +132,7 @@ _VARS_TO_EXTRACT = {
         'nnu'
     ],
     'rec.mc.nu': [
+        'E',
         'pdg',
         'mode',
         'iscc'
@@ -152,6 +160,7 @@ _TABLE_INDEX_NAMES = [
 ]
 
 _TABLE_COL_FILLNA_MAP = {
+    'rec.mc.nu.E': -5,
     'rec.mc.nu.pdg': 0,
     'rec.mc.nu.mode': -1,
     'rec.mc.nu.iscc': 0,
@@ -495,7 +504,7 @@ class NOvAData:
                 return
 
             return NOvAData(table=table_copy)
-
+    
     def fill_ana_track_kinematics(self, inplace: bool = False) -> None:
         """\
         Fill the table with the calculated track kinematics.

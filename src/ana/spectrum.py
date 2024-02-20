@@ -16,6 +16,11 @@ if TYPE_CHECKING:
 from ana.var import *
 
 
+class Binning:
+    STANDARD_ENERGY = np.linspace(0, 10, 100 + 1)
+    HALF_ENERGY = np.linspace(0, 5, 50 + 1)
+
+
 class Spectrum:
     """\
     Spectrum
@@ -26,9 +31,32 @@ class Spectrum:
     """
     def __init__(
             self, 
-            var: "Var", 
-            data: "NOvAData", 
-            bining: npt.NDArray
+            var: "Var",
+            binning: npt.NDArray
         ) -> None:
-        self._var_data = var(data=data)
-        # self._pot = Var(branch=, var=)
+        """\
+        
+        """
+        self._var = var
+        self._pot = Var(branch='rec.mc.nu.beam', var='potnum')
+
+        self.binning = binning
+
+    def get(
+            self, 
+            data: "NOvAData"
+        ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+        """\
+
+        """
+        values, edges = np.histogram(self._var(data=data), bins=self.binning)
+        centres = (edges[:-1] + edges[1:]) / 2
+        return (values, edges, centres), self._pot(data=data)
+
+    def __call__(
+            self,
+            data: "NOvAdata"
+        ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
+        """
+        """
+        return self.get(data=data)
