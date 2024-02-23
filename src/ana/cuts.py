@@ -28,7 +28,7 @@ import pandas as pd
 CutFuncType: TypeAlias = Callable[..., pd.Series]
 
 
-# Predefined cut functions (for the really mini dataset only!)
+# Predefined cut functions
 # ---------------------------------------------------------------------------- #
 
 
@@ -177,7 +177,7 @@ class Cuts:
 
         # Define the NOvA cuts.
         cuts.define_cut(
-            name='Detector Quality', 
+            name='Detector Quality',
             cut_func=cut_numu_detector_quality
         )
         cuts.define_cut(
@@ -227,22 +227,29 @@ class Cuts:
         """
         self._cuts[name] = cut_func
 
+    def get_cut(
+            self,
+            name: str,
+            df: pd.DataFrame,
+            passed: bool = True
+        ) -> pd.Series:
+        """
+        """
+        if passed:
+            return self._cuts[name](df)
+        
+        return ~self._cuts[name](df)
+
     def apply_cut(
-            self, 
-            name: str, 
-            df: pd.DataFrame, 
+            self,
+            name: str,
+            df: pd.DataFrame,
             passed: bool = True
         ) -> pd.DataFrame:
         """\
         Apply a certain cut.
         """
-        df = df.copy()
-       
-        if passed:
-            result = df[self._cuts[name](df)]
-        else:
-            result = df[~self._cuts[name](df)]
-        return result
+        return df[self.get_cut(name, df, passed)]
 
     def apply_cuts(
             self, 
@@ -295,4 +302,8 @@ class Cuts:
         return result
 
     def print_all_cuts(self) -> None:
-        print(''.join(self._cuts))
+        """
+        """
+        print('Defined Cuts\n------------')
+        for cut in self._cuts:
+            print('\t' + cut)
