@@ -15,6 +15,8 @@ __all__ = [
     'NOvAData'
 ]
 
+import pathlib
+
 import numpy as np
 import numpy.typing as npt
 
@@ -22,9 +24,11 @@ import h5py
 
 import pandas as pd
 
+from sklearn.model_selection import train_test_split
+
 # Local
 
-from detectors import *
+from detectors import *  # type: ignore
 
 
 # TODO: Some of the functions here can be parallelised easily, could save time
@@ -160,9 +164,9 @@ _TABLE_INDEX_NAMES = [
 ]
 
 _TABLE_COL_FILLNA_MAP = {
-    'rec.mc.nu.E': -5,
+    'rec.mc.nu.E': -5,  # Negative value will be taken out by data transforms...
     'rec.mc.nu.pdg': 0,
-    'rec.mc.nu.mode': -1,
+    'rec.mc.nu.mode': -1,  # -1 means an unknown interaction mode
     'rec.mc.nu.iscc': 0,
     'rec.mc.nu.beam.potnum': 0
 }
@@ -333,10 +337,9 @@ class NOvAData:
         """
         self.table = table
         self._remove_nansense_data()
-        self._applied_cuts = list()
 
     @staticmethod
-    def init_from_copymerge_h5(h5dirs: list[str]) -> "NOvAData":
+    def init_from_copymerge_h5(h5dirs: list[str | pathlib.Path]) -> "NOvAData":
         """\
         Alternative `NOvAData` constructor.
 
@@ -350,8 +353,6 @@ class NOvAData:
         NoVAData
             An initialised `NOvAData` object.
         """
-        # TODO: Add an option to specify which columns you need, could save some 
-        #       memory and possibly time...
 
         tables = list()
 
@@ -408,6 +409,33 @@ class NOvAData:
 
         return NOvAData(table=concat_table)
 
+    @staticmethod
+    def init_from_saved_h5(h5dirs: list[str | pathlib.Path]) -> "NOvAData":
+        """\
+        Alternative `NOvAData` constructor used to load table(s) saved using the
+        `NOvAData.save_table` method.
+
+        Args
+        ----
+        h5dir: list
+            List of the saved HDF5 files.
+
+        Returns
+        -------
+        NoVAData
+            An initialised `NOvAData` object.
+        """
+        tables = list()
+
+        for h5dir in h5dirs:
+            tables.append(
+                pd.read_hdf(h5dir, key='table')
+            )
+        
+        concat_table = pd.concat(tables)
+
+        return NOvAData(table=concat_table)
+
     def _remove_nansense_data(self) -> None:
         """\
         Helper function: Removes unwanted NaN records in the table.
@@ -446,66 +474,65 @@ class NOvAData:
         """
         table_copy = self.table.copy()
 
-        try:
-            is_nu_event = table_copy['rec.mc.nnu'] > 0
+        is_nu_event = table_copy['rec.mc.nnu'] > 0
 
-            # Event interaction
+        # Event interaction
 
-            table_copy['ana.mc.flag.isCC'] = (
-                table_copy['rec.mc.nu.iscc'] * is_nu_event
-            )
-            table_copy['ana.mc.flag.isNC'] = (
-                (table_copy['ana.mc.flag.isCC'] < 1) * is_nu_event
-            )
+        table_copy['ana.mc.flag.isCC'] = (
+            table_copy['rec.mc.nu.iscc'] * is_nu_event
+        )
+        table_copy['ana.mc.flag.isNC'] = (
+            (table_copy['ana.mc.flag.isCC'] < 1) * is_nu_event
+        )
 
-            # Specific event interactions
+        # Specific event interactions
 
-            table_copy['ana.mc.flag.isNuMu'] = (
-                table_copy['rec.mc.nu.pdg'] == 14
-            )
-            table_copy['ana.mc.flag.isANuMu'] = (
-                table_copy['rec.mc.nu.pdg'] == -14
-            )
+        table_copy['ana.mc.flag.isNuMu'] = (
+            table_copy['rec.mc.nu.pdg'] == 14
+        )
+        table_copy['ana.mc.flag.isANuMu'] = (
+            table_copy['rec.mc.nu.pdg'] == -14
+        )
 
-            table_copy['ana.mc.flag.isNuE'] = (
-                table_copy['rec.mc.nu.pdg'] == 12
-            )
-            table_copy['ana.mc.flag.isANuE'] = (
-                table_copy['rec.mc.nu.pdg'] == -12
-            )
+        table_copy['ana.mc.flag.isNuE'] = (
+            table_copy['rec.mc.nu.pdg'] == 12
+        )
+        table_copy['ana.mc.flag.isANuE'] = (
+            table_copy['rec.mc.nu.pdg'] == -12
+        )
 
-            table_copy['ana.mc.flag.isNuMuCC'] = (
-                table_copy['ana.mc.flag.isNuMu'] 
-                    * table_copy['ana.mc.flag.isCC']
-            )
-            table_copy['ana.mc.flag.isANuMuCC'] = (
-                table_copy['ana.mc.flag.isANuMu'] 
-                    * table_copy['ana.mc.flag.isCC']
-            )
+        table_copy['ana.mc.flag.isNuMuCC'] = (
+            table_copy['ana.mc.flag.isNuMu'] 
+                * table_copy['ana.mc.flag.isCC']
+        )
+        table_copy['ana.mc.flag.isANuMuCC'] = (
+            table_copy['ana.mc.flag.isANuMu'] 
+                * table_copy['ana.mc.flag.isCC']
+        )
 
-            table_copy['ana.mc.flag.isNuECC'] = (
-                table_copy['ana.mc.flag.isNuE'] 
-                    * table_copy['ana.mc.flag.isCC']
-            )
-            table_copy['ana.mc.flag.isANuECC'] = (
-                table_copy['ana.mc.flag.isANuE'] 
-                    * table_copy['ana.mc.flag.isCC']
-            )
-        except KeyError:
-            raise KeyError(
-                'Analysis flags were not set due to missing key(s) / column(s).'
-            )
-        else:
-            # Replace with the updated table. This is done to ensure that there
-            # are no unfinished operations (due to exceptions) becasue that
-            # could result in weird half filled rows/columns.
-            if inplace:
-                self.table = table_copy
-                return
+        table_copy['ana.mc.flag.isNuECC'] = (
+            table_copy['ana.mc.flag.isNuE'] 
+                * table_copy['ana.mc.flag.isCC']
+        )
+        table_copy['ana.mc.flag.isANuECC'] = (
+            table_copy['ana.mc.flag.isANuE'] 
+                * table_copy['ana.mc.flag.isCC']
+        )
+        
+        # Replace with the updated table. This is done to ensure that there
+        # are no unfinished operations (due to exceptions) becasue that
+        # could result in weird half filled rows/columns.
 
-            return NOvAData(table=table_copy)
+        if inplace:
+            self.table = table_copy
+            return
+
+        return NOvAData(table=table_copy)
     
-    def fill_ana_track_kinematics(self, inplace: bool = False) -> None:
+    def fill_ana_track_kinematics(
+            self, 
+            inplace: bool = False
+        ) -> "NOvAData" | None:
         """\
         Fill the table with the calculated track kinematics.
 
@@ -523,64 +550,109 @@ class NOvAData:
         """
         table_copy = self.table
 
-        # TODO: What is point S? Why is the same point used for all calculations
-        #       of beam direction?
         fd_r_beam_dir = calculate_beam_direction_at_fd(POINT_S)
 
-        try:
-            table_copy['ana.trk.kalman.tracks.cosBeam'] = (
-                table_copy['rec.trk.kalman.tracks.dir.x'] * fd_r_beam_dir[0] 
-                + table_copy['rec.trk.kalman.tracks.dir.y'] * fd_r_beam_dir[1] 
-                + table_copy['rec.trk.kalman.tracks.dir.z'] * fd_r_beam_dir[2]
-            )
+        table_copy['ana.trk.kalman.tracks.cosBeam'] = (
+            table_copy['rec.trk.kalman.tracks.dir.x'] * fd_r_beam_dir[0] 
+            + table_copy['rec.trk.kalman.tracks.dir.y'] * fd_r_beam_dir[1] 
+            + table_copy['rec.trk.kalman.tracks.dir.z'] * fd_r_beam_dir[2]
+        )
 
-            table_copy['ana.trk.kalman.tracks.PtToPmu'] = (
-                1 - table_copy['ana.trk.kalman.tracks.cosBeam']**2
+        table_copy['ana.trk.kalman.tracks.PtToPmu'] = (
+            1 - table_copy['ana.trk.kalman.tracks.cosBeam']**2
+        )**0.5
+
+        table_copy['ana.trk.kalman.tracks.Pmu'] = np.sqrt(
+            table_copy['rec.energy.numu.lstmmuon']**2 - (105.658E-3)**2
+        )
+        table_copy['ana.trk.kalman.tracks.Pt'] = (
+            table_copy['ana.trk.kalman.tracks.PtToPmu'] 
+            * table_copy['ana.trk.kalman.tracks.Pmu']
+        )
+
+        table_copy['ana.trk.kalman.tracks.Qsquared'] = (
+            2 * table_copy['rec.energy.numu.lstmnu'] 
+            * (
+                table_copy['rec.energy.numu.lstmmuon'] 
+                - table_copy['ana.trk.kalman.tracks.Pmu'] 
+                * table_copy['ana.trk.kalman.tracks.cosBeam']
+            ) 
+            - (105.658E-3)**2
+        )
+        table_copy['ana.trk.kalman.tracks.W'] = (
+            (
+                0.938272**2 + 2 * 0.938272 * (
+                    table_copy['rec.energy.numu.lstmnu'] 
+                    - table_copy['rec.energy.numu.lstmmuon']
+                ) - table_copy['ana.trk.kalman.tracks.Qsquared']
             )**0.5
+        )
+    
+        if inplace:
+            self.table = table_copy
+            return
 
-            table_copy['ana.trk.kalman.tracks.Pmu'] = np.sqrt(
-                table_copy['rec.energy.numu.lstmmuon']**2 - (105.658E-3)**2
-            )
-            table_copy['ana.trk.kalman.tracks.Pt'] = (
-                table_copy['ana.trk.kalman.tracks.PtToPmu'] 
-                * table_copy['ana.trk.kalman.tracks.Pmu']
-            )
-
-            table_copy['ana.trk.kalman.tracks.Qsquared'] = (
-                2 * table_copy['rec.energy.numu.lstmnu'] 
-                * (
-                    table_copy['rec.energy.numu.lstmmuon'] 
-                    - table_copy['ana.trk.kalman.tracks.Pmu'] 
-                    * table_copy['ana.trk.kalman.tracks.cosBeam']
-                ) 
-                - (105.658E-3)**2
-            )
-            table_copy['ana.trk.kalman.tracks.W'] = (
-                (
-                    0.938272**2 + 2 * 0.938272 * (
-                        table_copy['rec.energy.numu.lstmnu'] 
-                        - table_copy['rec.energy.numu.lstmmuon']
-                    ) - table_copy['ana.trk.kalman.tracks.Qsquared']
-                )**0.5
-            )
-        except KeyError:
-            raise KeyError(
-                'Analysis track kinematic variables were not set due to missing'
-                ' key(s) / column(s).'
-            )
-        else:
-            if inplace:
-                self.table = table_copy
-                return
-
-            return NOvAData(table=table_copy)
+        return NOvAData(table=table_copy)
 
     def train_test_split(
             self,
             x_cols: list[str],
             y_cols: list[str],
-            train_ratio: float = 0.8,
+            test_size: float = 0.2,
             shuffle: bool = False,
             random_state: np.random.RandomState | None = None
-        ) -> None:
-        NotImplemented 
+        ) -> dict[str, pd.DataFrame]:
+        """\
+        Wraps behaviour of Sci-kit Learn's `train_test_split`.
+
+        Args
+        ----
+        x_cols: list[str]
+            Names of the features (x-variable - used for training).
+        y_cols: list[str]
+            Name of the (label) data (y-variable - that will be predicted).
+        test_size: float
+            Percentage of the table events used for testing. Defaults to 0.2.
+        shuffle: bool
+            Shuffles the table rows if `True`. Defaults to `False`.
+        random_state: np.random.RandomState | None
+            Random state used for shuffling the data. Defaults to `None`.
+        
+        Returns
+        -------
+        dict[str, pd.DataFrame]
+            A dictionary containing the x, y training and testing data indicated
+            by the keys: 'XTrain', 'YTrain', 'XTest', and 'YTest'.
+        """
+        table = self.table.copy().reset_index(drop=True)
+
+        train_table, test_table = train_test_split(
+            table,
+            test_size=test_size,
+            shuffle=shuffle,
+            random_state=random_state
+        )
+
+        return {
+            'XTrain': train_table[x_cols],
+            'YTrain': train_table[y_cols],
+            'XTest': test_table[x_cols],
+            'YTest': test_table[y_cols]
+        }
+
+    def save_table(self, h5dir: str | pathlib.Path) -> None:
+        """\
+        Saves the current table as an HDF5 file.
+
+        Args
+        ----
+        h5dir: str | pathlib.Path
+            Filename (optionally with an included path/directory) for saving the
+            table. Must end with '.h5' to indicate a file in HDF5 format!
+        """
+        self.table.to_hdf(
+            path_or_buf=h5dir,
+            key='table',
+            format='fixed',  # For fast read/write operations.
+            data_columns=True
+        )
