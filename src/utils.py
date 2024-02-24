@@ -87,13 +87,21 @@ class Datasets:
         """
         load_dotenv()
 
-        if verbose:
-            print('Datasets found:')
+        ds_names = list()
 
         for _dataset_name, _dataset_dir in os.environ.items():
             if _dataset_name.endswith('_DIR'):
                 setattr(self, _dataset_name, _dataset_dir)
-                print(f'- {_dataset_name}')
+                ds_names.append(_dataset_name)
+
+        if verbose:
+            if len(ds_names):
+                ds_str = ', '.join(ds_names)
+                print(f'Datasets | Found the following: {ds_str}')
+            else:
+                print('Datasets | No datasets found.')
+
+        del ds_str
 
 
 # DEPRECATED! Use `src.utils.Datasets` instead.

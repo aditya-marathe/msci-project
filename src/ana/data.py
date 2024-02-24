@@ -326,6 +326,9 @@ class NOvAData:
         - Applying the latest NOvA cuts / any custom cuts.
 
     """
+
+    verbose: bool = True
+
     def __init__(self, table: pd.DataFrame) -> None:
         """\
         `NOvAData` constructor.
@@ -338,8 +341,11 @@ class NOvAData:
         self.table = table
         self._remove_nansense_data()
 
+        if NOvAData.verbose:
+            print('NOvAData | Initialised.')
+
     @staticmethod
-    def init_from_copymerge_h5(h5dirs: list[str | pathlib.Path]) -> "NOvAData":
+    def init_from_copymerge_h5(h5dirs: list[str | pathlib.Path]) -> 'NOvAData':
         """\
         Alternative `NOvAData` constructor.
 
@@ -356,14 +362,17 @@ class NOvAData:
 
         tables = list()
 
-        for h5dir in h5dirs:
+        if NOvAData.verbose:
+            print('NOvAData | Loading tables from CM HDF5 files...')
+
+        for i_dir, h5dir in enumerate(h5dirs):
             with h5py.File(name=h5dir, mode='r') as h5file:
-                # So, CAFAna stores information about the run, subrun, cycle of 
-                # the MC simulation, batch of the MC simulation, event, subevent 
-                # in the standard record header (SRHeader). But, in the HDF5 
-                # format, each "branch" (except for `rec.sel.scann`) has these 
-                # stored individually inside of each branch. So, the idea is 
-                # that we want to group these together and merge all the 
+                # So, CAFAna stores information about the run, subrun, cycle of
+                # the MC simulation, batch of the MC simulation, event, subevent
+                # in the standard record header (SRHeader). But, in the HDF5
+                # format, each "branch" (except for `rec.sel.scann`) has these
+                # stored individually inside of each branch. So, the idea is
+                # that we want to group these together and merge all the
                 # branches nicely into a Pandas `DataFrame` object.
 
                 table = pd.DataFrame(
@@ -373,31 +382,31 @@ class NOvAData:
                 # Fill the table
                 for branch in h5file.keys():
                     # Special case: If the variable in question has a different
-                    # number of data points (e.g. variables in the neutrino MC 
+                    # number of data points (e.g. variables in the neutrino MC
                     # branch) then we would have to use a different method to
-                    # extract data from this column.                    
+                    # extract data from this column.
                     if branch in _DIFF_LEN_BRANCHES:
-                        vars = _VARS_TO_EXTRACT.get(branch, [])
+                        vars_ = _VARS_TO_EXTRACT.get(branch, [])
 
-                        if len(vars) > 0:
+                        if len(vars_) > 0:
                             mini_table = _get_branch_df(
-                                h5file=h5file, 
-                                branch=branch, 
-                                vars=vars,
+                                h5file=h5file,
+                                branch=branch,
+                                vars=vars_,
                                 flatten=branch.startswith('rec.mc')
                             )
 
                             table = pd.merge(
                                 table,
-                                mini_table, 
-                                left_index=True, 
-                                right_index=True, 
+                                mini_table,
+                                left_index=True,
+                                right_index=True,
                                 how='outer'
                             )
 
                         continue
-                    
-                    # Normal case: When the variable has the expected column 
+                   
+                    # Normal case: When the variable has the expected column
                     # length.
                     for var in _VARS_TO_EXTRACT.get(branch, []):
                         col_name = branch + '.' + var
@@ -405,12 +414,18 @@ class NOvAData:
 
             tables.append(table)
 
+            if NOvAData.verbose:
+                progress = f'{i_dir + 1} / {len(h5dirs)}'
+                print(
+                    f'NOvAData | Loaded table from CM HDF5 files ({progress}).'
+                )
+
         concat_table = pd.concat(tables)
 
         return NOvAData(table=concat_table)
 
     @staticmethod
-    def init_from_saved_h5(h5dirs: list[str | pathlib.Path]) -> "NOvAData":
+    def init_from_saved_h5(h5dirs: list[str | pathlib.Path]) -> 'NOvAData':
         """\
         Alternative `NOvAData` constructor used to load table(s) saved using the
         `NOvAData.save_table` method.
@@ -427,10 +442,16 @@ class NOvAData:
         """
         tables = list()
 
-        for h5dir in h5dirs:
+        if NOvAData.verbose:
+            print('NOvAData | Loading tables from HDF5 files...')
+
+        for i_dir, h5dir in enumerate(h5dirs):
             tables.append(
                 pd.read_hdf(h5dir, key='table')
             )
+            if NOvAData.verbose:
+                progress = f'{i_dir + 1} / {len(h5dirs)}'
+                print(f'NOvAData | Loaded table from HDF5 files ({progress}).')
         
         concat_table = pd.concat(tables)
 
@@ -443,20 +464,24 @@ class NOvAData:
         # Account for any NaN values in the table
         for column_name, fill_value in _TABLE_COL_FILLNA_MAP.items():
             if column_name in self.table.columns:
-                self.table[column_name].fillna(fill_value, inplace=True)
+                self.table[column_name] = self.table[column_name].fillna(
+                    fill_value
+                )
 
-        # So, sometimes events can be a bit too messy to reconstruct, and we 
+        # So, sometimes events can be a bit too messy to reconstruct, and we
         # may encounter some rows the the energy estimator branch which may have
-        # NaN values... these can be simply dropped. 
-        # Notes: This could also be added to the quality cuts... 
-        self.table.dropna(
+        # NaN values... these can be simply dropped.
+        # Notes: This could also be added to the quality cuts...
+        self.table = self.table.dropna(
             subset=[
                 n for n in self.table.columns if n.startswith('rec.energy')
-            ], 
-            inplace=True
+            ]
         )
 
-    def fill_ana_flags(self, inplace: bool = False) -> "NOvAData" | None:
+    def fill_ana_flags(
+            self,
+            inplace: bool = False
+        ) -> 'NOvAData' | None:  # type: ignore
         """\
         Function fills the table with flags to streamline data analysis.
 
@@ -518,6 +543,9 @@ class NOvAData:
             table_copy['ana.mc.flag.isANuE'] 
                 * table_copy['ana.mc.flag.isCC']
         )
+
+        if NOvAData.verbose:
+            print('NOvAData | Filled MC truth flags.')
         
         # Replace with the updated table. This is done to ensure that there
         # are no unfinished operations (due to exceptions) becasue that
@@ -528,11 +556,11 @@ class NOvAData:
             return
 
         return NOvAData(table=table_copy)
-    
+
     def fill_ana_track_kinematics(
-            self, 
+            self,
             inplace: bool = False
-        ) -> "NOvAData" | None:
+        ) -> 'NOvAData' | None:  # type: ignore
         """\
         Fill the table with the calculated track kinematics.
 
@@ -587,6 +615,9 @@ class NOvAData:
                 ) - table_copy['ana.trk.kalman.tracks.Qsquared']
             )**0.5
         )
+
+        if NOvAData.verbose:
+            print('NOvAData | Filled track kinematics.')
     
         if inplace:
             self.table = table_copy
@@ -656,3 +687,13 @@ class NOvAData:
             format='fixed',  # For fast read/write operations.
             data_columns=True
         )
+
+        if NOvAData.verbose:
+            print('NOvAData | Saved table to HDF5.')
+
+    def __str__(self) -> str:
+        n_features = len(self.table.columns)
+        return f'NOvAData(features={n_features}, events={len(self.table)})'
+    
+    def __repr__(self) -> str:
+        return str(self)

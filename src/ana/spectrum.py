@@ -5,16 +5,55 @@ src / ana / spectrum.py
 Aditya Marathe
 """
 
+from __future__ import absolute_import
+from __future__ import annotations
+from __future__ import unicode_literals
+from __future__ import print_function
+
+__all__ = [
+    'Binning',
+    'Spectrum',
+    'OscillatableSpectrum'
+]
+
+import sys
+
 from typing import TYPE_CHECKING
+
+from functools import lru_cache
 
 import numpy as np
 import numpy.typing as npt
+
+sys.path.insert(1, './')
 
 from pyosccalc.OscCalc import OscCalc
 from pyosccalc.FluxTools import FluxTools
 
 if TYPE_CHECKING:
     from ana.data import NOvAData
+
+
+@lru_cache
+def _get_spectrum(
+        spectrum: 'Spectrum',
+        data: 'NOvAData'
+    ) -> dict[str, npt.NDArray]:
+    """\
+    Helper function for the `Spectrum` class wrapped with `lru_cache` to speed
+    up repeated function calls.
+    """
+    values, bin_edges = np.histogram(
+        data.table[spectrum.var],
+        bins=spectrum.binning
+    )
+    centres = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    return {
+        'YValues': values,
+        'BinEdges': bin_edges,
+        'XValues': centres
+    }
 
 
 class Binning:
@@ -64,7 +103,7 @@ class Spectrum:
         self._var = var
         self.binning = binning
 
-    def get(self, data: "NOvAData") -> dict[str, npt.NDArray]:
+    def get(self, data: 'NOvAData') -> dict[str, npt.NDArray]:
         """\
         Get the spectrum for a dataset.
 
@@ -80,23 +119,32 @@ class Spectrum:
             centres which are stored in keys 'YValues', 'BinEdges' and 'XValues'
             respectively.
         """
-        values, bin_edges = np.histogram(
-            data.table[self._var],
-            bins=self.binning
-        )
-        centres = (bin_edges[:-1] + bin_edges[1:]) / 2
-
-        return {
-            'YValues': values,
-            'BinEdges': bin_edges,
-            'XValues': centres
-        }
+        return _get_spectrum(spectrum=self, data=data)
 
     def __call__(self, data: "NOvAData") -> dict[str, npt.NDArray]:
         """\
         Shortcut for the `Spectrum.get` method.
         """
         return self.get(data=data)
+
+    @property
+    def var(self) -> str:
+        """\
+        Variable getter.
+        """
+        return self._var
+
+    def __str__(self) -> str:
+        binning = 'Custom binning'
+        if np.all(self.binning == Binning.HALF_E):
+            binning = '50 equal bins between 0-5 GeV'
+        elif np.all(self.binning == Binning.FULL_E):
+            binning = '100 equal bins between 0-10 GeV'
+        
+        return f'Specturm(\'{self._var}\', binning=\'{binning}\')'
+   
+    def __repr__(self) -> str:
+        return str(self)
 
 
 def get_flux_obj(
