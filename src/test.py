@@ -25,7 +25,7 @@ truth_spectrum = ana.Spectrum(
     binning=ana.Binning.HALF_E
 )
 
-subplot = plotting.SpectrumSubplot(1, 2)
+subplot = plotting.Subplots(1, 2)
 subplot.plot_spectra(
     ax_idx=0,
     data=data,
@@ -37,13 +37,22 @@ subplot.plot_spectra(
 subplot.set_energy_xy_labels(ax_idx=0, bin_width=0.1)
 subplot.legend(ax_idx=0)
 
-subplot.plot_relative_residuals(
+stats, spec = subplot.plot_relative_residuals(
     ax_idx=1,
     data=data,
     obs_var=spectrum.var,
     exp_var=truth_spectrum.var,
     binning=np.linspace(-1, 1, 20)
 )
+x_arr = np.linspace(-1, 1, 100)
+y_arr, params = plotting.fit_to_gaussian(
+    x=x_arr,
+    x_obs=spec['XValues'],  # type: ignore
+    y_obs=spec['YValues'],  # type: ignore
+    mean=stats['Mean'],
+    std=stats['StdDev']
+)
+subplot.axs[1].plot(x_arr, y_arr)
 subplot.set_energy_residual_xy_labels(ax_idx=1)
 
 subplot.save_plot('testing123jeej', force=True)

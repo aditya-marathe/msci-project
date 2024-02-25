@@ -1,1 +1,9 @@
-from plotting.spectrum import *
+"""\
+src / plotting
+--------------------------------------------------------------------------------
+
+Aditya Marathe
+"""
+
+from plotting.subplots import *
+from plotting.gaussian_fit import *

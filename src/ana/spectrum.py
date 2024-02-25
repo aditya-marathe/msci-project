@@ -121,11 +121,29 @@ class Spectrum:
         """
         return _get_spectrum(spectrum=self, data=data)
 
-    def __call__(self, data: "NOvAData") -> dict[str, npt.NDArray]:
+    def get_stats(self, data: 'NOvAData') -> dict[str, float]:
         """\
-        Shortcut for the `Spectrum.get` method.
+        Get statistics (number of events, mean, and standard deviation) of the 
+        spectrum data.
+
+        Args
+        ----
+        data: NOvAData
+            An initialised NOvA dataset.
+
+        Returns
+        -------
+        dict[str, float]
+            A dictionary containing the number of events, mean, and standard 
+            deviation of the data whic are stored in keys 'Events', 'Mean', and
+            'StdDev' respectively.
         """
-        return self.get(data=data)
+        var_data = data.table[self._var]
+        return {  # type: ignore
+            'Events': len(var_data),
+            'Mean': np.mean(var_data),
+            'StdDev': np.std(var_data)
+        }
 
     @property
     def var(self) -> str:
@@ -133,6 +151,12 @@ class Spectrum:
         Variable getter.
         """
         return self._var
+
+    def __call__(self, data: 'NOvAData') -> dict[str, npt.NDArray]:
+        """\
+        Shortcut for the `Spectrum.get` method.
+        """
+        return self.get(data=data)
 
     def __str__(self) -> str:
         binning = 'Custom binning'

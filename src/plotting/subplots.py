@@ -13,7 +13,7 @@ from __future__ import print_function
 __all__ = [
     'PLOT_DIR',
     'Style',
-    'SpectrumSubplot'
+    'Subplots'
 ]
 
 from typing import TYPE_CHECKING
@@ -109,12 +109,72 @@ _Styles = Literal[
 ]
 Styles = _Styles | list[_Styles]
 
-class SpectrumSubplot:
-    """
-    SpectrumSubplot
-    ---------------
 
-    Wrapper around Matplotlib `subplots`.
+def _plot_styled_hist(
+        ax: Axes,
+        y_values: npt.NDArray,
+        bin_edges: npt.NDArray,
+        x_values: npt.NDArray,
+        label: str | None,
+        style: Styles,
+        alpha: float
+    ) -> None:
+    """\
+    Helper function for plotting styled histograms.
+    """
+    if not isinstance(style, list):
+            style = [style]
+
+    if not (
+        (Style.HISTOGRAM in style)
+        or (Style.STEPS in style)
+        or (Style.S_POINTS in style)
+        or (Style.L_POINTS in style)
+    ):
+        raise ValueError(f'Unknown plotting style(s) `{style}`.')
+
+    if Style.HISTOGRAM in style:
+        ax.hist(
+            bin_edges[:-1],
+            bins=bin_edges,
+            weights=y_values,
+            label=label,
+            alpha=alpha
+        )
+    if Style.STEPS in style:
+        ax.hist(
+            bin_edges[:-1],
+            bins=bin_edges,
+            weights=y_values,
+            label=label,
+            histtype='step',
+            alpha=alpha
+        )
+    if Style.S_POINTS in style:
+        ax.plot(
+            x_values,
+            y_values,
+            '.',
+            label=label,
+            alpha=alpha
+        )
+    if Style.L_POINTS in style:
+        ax.plot(
+            x_values,
+            y_values,
+            'o',
+            label=label,
+            alpha=alpha
+        )
+
+
+class Subplots:
+    """
+    Subplots
+    --------
+
+    Wrapper around behaviour of Matplotlib `subplots` to make it easier to plot
+    / analyse energy spectra and save high-quality images of the figure.
     """
     def __init__(
             self,
@@ -132,7 +192,7 @@ class SpectrumSubplot:
             **fig_kw
         ):
         """\
-        Initialises a `SpectrumSubplot`.
+        Initialises `Subplots`.
 
         Args
         ----
@@ -253,7 +313,7 @@ class SpectrumSubplot:
             label: str | None = None,
             style: Styles = Style.HISTOGRAM,
             alpha: float = 0.8
-        ) -> None:
+        ) -> dict[str, float]:
         """\
         Plots the given spectrum.
 
@@ -268,54 +328,36 @@ class SpectrumSubplot:
         label: str | None
             Label displayed on the legend.
         style: Styles
-            Chosen plotting style. Defaults to `PlottingStyle.HISTOGRAM`.
+            Chosen plotting style. Defaults to `Style.HISTOGRAM`.
         alpha: float
             The transparency of the histogram (useful for plotting multiple 
             histograms).
+
+        Returns
+        -------
+        dict[str, float]
+            A dictionary containing the number of events, mean, and standard 
+            deviation of the data whic are stored in keys 'Events', 'Mean', and
+            'StdDev' respectively.
         """
         spectrum_dict = spectrum(data)
 
-        if not isinstance(style, list):
-            style = [style]
-
-        if Style.HISTOGRAM in style:
-            self.axs[ax_idx].hist(
-                spectrum_dict['BinEdges'][:-1],
-                bins=spectrum_dict['BinEdges'],
-                weights=spectrum_dict['YValues'],
-                label=label,
-                alpha=alpha
-            )
-        if Style.STEPS in style:
-            self.axs[ax_idx].hist(
-                spectrum_dict['BinEdges'][:-1],
-                bins=spectrum_dict['BinEdges'],
-                weights=spectrum_dict['YValues'],
-                label=label,
-                histtype='step',
-                alpha=alpha
-            )
-        if Style.S_POINTS in style:
-            self.axs[ax_idx].plot(
-                spectrum_dict['XValues'],
-                spectrum_dict['YValues'],
-                '.',
-                label=label,
-                alpha=alpha
-            )
-        if Style.L_POINTS in style:
-            self.axs[ax_idx].plot(
-                spectrum_dict['XValues'],
-                spectrum_dict['YValues'],
-                'o',
-                label=label,
-                alpha=alpha
-            )
+        _plot_styled_hist(
+            self.axs[ax_idx],
+            y_values=spectrum_dict['YValues'],
+            bin_edges=spectrum_dict['BinEdges'],
+            x_values=spectrum_dict['XValues'],
+            label=label,
+            style=style,
+            alpha=alpha
+        )
 
         self.axs[ax_idx].set_xlim(
             np.min(spectrum.binning),
             np.max(spectrum.binning)
         )
+
+        return spectrum.get_stats(data=data)
 
     def plot_spectra(
             self,
@@ -371,8 +413,9 @@ class SpectrumSubplot:
             binning: npt.NDArray | None = None,
             *,
             label: str | None = None,
+            style: Styles = Style.HISTOGRAM,
             alpha: float = 0.8
-        ) -> None:
+        ) -> tuple[dict[str, float], dict[str, float]]:
         """\
         Calculates the relative residuals and plots the histogram.
 
@@ -390,21 +433,55 @@ class SpectrumSubplot:
             Histogram binning for the residuals. 
         label: str | None
             Label displayed on the legend.
+        style: Styles
+            Chosen plotting style. Defaults to `Style.HISTOGRAM`.
         alpha: float
             The transparency of the histogram (useful for plotting multiple 
             histograms).
+
+        Returns
+        -------
+        tuple[dict[str, float], dict[str, float]]
+            One dictionary containing the mean, standard deviation, and root
+            mean square (aka energy resolution) of the residuals as keys 'Mean',
+            'StdDev', and 'RMS' respectively. Another dictionary containing the
+            y values (bar heights), bin edges, and x values (bin centres) of the
+            residuals as keys 'YValues', 'BinEdges', and 'XValues' respectively.
         """
         observation = data.table[obs_var]
         expected = data.table[exp_var]
         residuals = 1 - (observation / expected)
 
-        self.axs[ax_idx].hist(
-            residuals,
-            bins=binning,
+        y_values, bin_edges = np.histogram(
+            residuals, 
+            bins=binning  # type: ignore
+        )
+        x_values = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+        _plot_styled_hist(
+            ax=self.axs[ax_idx],
+            y_values=y_values,
+            bin_edges=bin_edges,
+            x_values=x_values,
             label=label,
+            style=style,
             alpha=alpha
         )
+
         self.axs[ax_idx].set_xlim(-1, 1)
+
+        return ( # type: ignore ~ PyLance being stupid... I miss PyCharm :(
+            {
+                'Mean': np.mean(residuals),
+                'StdDev': np.std(residuals),
+                'RMS': np.sqrt(np.mean(residuals**2))
+            },
+            {
+                'YValues': y_values,
+                'BinEdges': bin_edges,
+                'XValues': x_values
+            }
+        )
 
     def _add_legend(self, ax: Axes) -> None:
         """\
@@ -458,8 +535,8 @@ class SpectrumSubplot:
 
         if filedir.exists() and verbose and not force:
             response = input(
-                f'SpectrumSubplot | A figure with name \'{figname}\' already '
-                'exists. Do you want to overwrite this image (y / n)? '
+                f'Subplots | A figure with name \'{figname}\' already exists. '
+                'Do you want to overwrite this image (y / n)? '
             )
             if (response.lower() == 'n') or (response.lower() == 'no'):
                 return
@@ -474,4 +551,10 @@ class SpectrumSubplot:
             )
 
             if verbose:
-                print('SpectrumSubplot | Figure saved!') 
+                print('Subplots | Figure saved!')
+
+    def __str__(self) -> str:
+        return 'Subplots()'
+    
+    def __repr__(self) -> str:
+        return str(self)
