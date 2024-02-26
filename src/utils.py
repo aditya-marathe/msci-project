@@ -104,7 +104,7 @@ class Datasets:
         del ds_str
 
 
-# DEPRECATED! Use `src.utils.Datasets` instead.
+# DEPRECATED! Use `src.ana.Datasets` instead.
 class LocalDatasets:
     # Note: Enum contains the locally saved datasets. Their directories are 
     #       stored in the environment variables. This enum stores the keys that
@@ -255,7 +255,7 @@ def load_nova_sample(
     warnings.warn(
         'Function `load_nova_sample` has been deprecated, use the `NOvAData` '
         'class from \'data.py\' instead!', 
-        DeprecationWarning, 
+        DeprecationWarning,
         stacklevel=2
     )
 

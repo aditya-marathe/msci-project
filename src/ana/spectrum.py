@@ -26,6 +26,7 @@ import numpy as np
 import numpy.typing as npt
 
 sys.path.insert(1, './')
+sys.path.insert(1, './../../')  # Added so that this also works in IPYNBs
 
 from pyosccalc.OscCalc import OscCalc
 from pyosccalc.FluxTools import FluxTools
@@ -239,6 +240,8 @@ class OscillatableSpectrum:
         self._spectrum = Spectrum(var=var, binning=binning)
         self._truth_spectrum = Spectrum(var=truth_var, binning=binning)
 
+        self._fluxtools = FluxTools()
+
     @property
     def binning(self) -> npt.NDArray:
         """\
@@ -253,7 +256,6 @@ class OscillatableSpectrum:
         """
         self._spectrum.binning = value
         self._truth_spectrum.binning = value
-        self._fluxtools = FluxTools()
 
     def get(self, data: "NOvAData", oscalc: OscCalc) -> dict[str, npt.NDArray]:
         """\

@@ -155,6 +155,9 @@ class Cuts:
     A class used to define and apply cuts to NOvA simulated data stored as a
     Pandas `DataFrame`.
     """
+
+    verbose: bool = True
+
     def __init__(self) -> None:
         """\
         Initialises a `Cuts` object with no pre-defined cuts.
@@ -249,7 +252,15 @@ class Cuts:
         """\
         Apply a certain cut.
         """
-        return df[self.get_cut(name, df, passed)]
+        result = df[self.get_cut(name, df, passed)]
+
+        if Cuts.verbose:
+            print(
+                f'Cuts     | Applied \'{name}\' cut ({len(df):_} -> '
+                f'{len(result):_} events).'
+            )
+
+        return result
 
     def apply_cuts(
             self, 
@@ -307,3 +318,9 @@ class Cuts:
         print('Defined Cuts\n------------')
         for cut in self._cuts:
             print('\t' + cut)
+
+    def __str__(self) -> str:
+        return f'Cuts(n_cuts={len(self._cuts)})'
+    
+    def __repr__(self) -> str:
+        return str(self)

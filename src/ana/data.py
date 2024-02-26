@@ -12,6 +12,7 @@ from __future__ import print_function
 from __future__ import with_statement
 
 __all__ = [
+    'EVENT_TYPE_MAP',
     'NOvAData'
 ]
 
@@ -37,6 +38,13 @@ from detectors import *  # type: ignore
 
 # Constants --------------------------------------------------------------------
 
+EVENT_TYPE_MAP = {
+    0: 'Background',
+    1: 'NuMu CC',
+    2: 'ANuMu CC',
+    3: 'ENumU CC',
+    4: 'NC'
+}
 
 _VARS_TO_EXTRACT = {
     
@@ -576,7 +584,7 @@ class NOvAData:
         NOvAData | None
             If `inplace` was set to `False` a new `NOvAData` object is returned.
         """
-        table_copy = self.table
+        table_copy = self.table.copy()
 
         fd_r_beam_dir = calculate_beam_direction_at_fd(POINT_S)
 
@@ -625,6 +633,55 @@ class NOvAData:
 
         return NOvAData(table=table_copy)
 
+    def fill_categorical(
+            self,
+            inplace: bool = False
+        ) -> 'NOvAData' | None:
+        """\
+        Function fills the table with categorical columns such as the event 
+        type - particularly useful for classification problems.
+
+        Args
+        ----
+        inplace: bool
+            If `True`, this function adds the new columns to this table, if 
+            `False` then it returns a new `NOvAData` with the updated table. 
+            Defaults to `False`.
+
+        Returns
+        -------
+        NOvAData | None
+            If `inplace` was set to `False` a new `NOvAData` object is returned.
+        """
+        table_copy = self.table.copy()
+
+        table_copy['ana.cat.event_type'] = (
+            self.table['ana.mc.flag.isNuMuCC'] 
+            + 2 * self.table['ana.mc.flag.isANuMuCC'] 
+            + 3 * self.table['ana.mc.flag.isNuECC'] 
+            + 4 * self.table['ana.mc.flag.isNC']
+            # 0 := Other background e.g., cosmic events...
+        )
+
+        if NOvAData.verbose:
+            print('NOvAData | Filled categorical data.')
+
+        if inplace:
+            self.table = table_copy
+            return
+
+        return NOvAData(table=table_copy)
+
+    def reset_index(self, inplace=True) -> None:
+        """\
+        Resets the index from `MutiIndex` based on the 'run', 'subrun', etc. to
+        an simple `Index` - can save some memory, and make it easier to ac.
+        """
+        table = self.table.reset_index(drop=True, inplace=inplace)
+
+        if table is not None:
+            return NOvAData(table=table)
+
     def train_test_split(
             self,
             x_cols: list[str],
@@ -632,7 +689,7 @@ class NOvAData:
             test_size: float = 0.2,
             shuffle: bool = False,
             random_state: np.random.RandomState | None = None
-        ) -> dict[str, pd.DataFrame]:
+        ) -> dict[str, pd.DataFrame | pd.Series]:
         """\
         Wraps behaviour of Sci-kit Learn's `train_test_split`.
 
@@ -655,7 +712,7 @@ class NOvAData:
             A dictionary containing the x, y training and testing data indicated
             by the keys: 'XTrain', 'YTrain', 'XTest', and 'YTest'.
         """
-        table = self.table.copy().reset_index(drop=True)
+        table = self.table.reset_index(drop=True).copy()  # type: ignore
 
         train_table, test_table = train_test_split(
             table,
@@ -693,7 +750,7 @@ class NOvAData:
 
     def __str__(self) -> str:
         n_features = len(self.table.columns)
-        return f'NOvAData(features={n_features}, events={len(self.table)})'
+        return f'NOvAData(features={n_features}, events={len(self.table):_})'
     
     def __repr__(self) -> str:
         return str(self)

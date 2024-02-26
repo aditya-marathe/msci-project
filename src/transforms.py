@@ -6,12 +6,41 @@ src / transforms.py
 Aditya Marathe
 
 """
-import numpy as np
 
-import pandas as pd
+from typing import Callable as _Callable
+
+import numpy as _np
+
+import pandas as _pd
 
 
-def tf_290124_positive_energies(df: pd.DataFrame) -> pd.DataFrame:
+def get_tf_info(tf: _Callable[..., _pd.DataFrame], lower: bool = True) -> str:
+    """\
+    Get information about the transformation being made, given that the function
+    has a docstring.
+
+    Args
+    ----
+    tf: Callable[..., pd.DataFrame]
+        Any function that behaves like a transform and returns a `DataFrame`.
+    lower: bool
+        Make the first character lowercase for embedding.
+    """
+    output = '[No information found, please add a docstring for this transform]'
+
+    if tf.__doc__:
+        output = tf.__doc__.split('\n')[-2].removeprefix('    ')
+
+        if lower:
+            output = output[0].lower() + output[1:]
+
+        if output[-1] != '.':
+            output = output + '.'  # Puncuation is important!
+
+    return output
+
+
+def tf_290124_positive_energies(df: _pd.DataFrame) -> _pd.DataFrame:
     """\
     Transform: 29/01/2024
     ---------------------
@@ -32,11 +61,11 @@ def tf_290124_positive_energies(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 
 
-def tf_290124_numu_energy(df: pd.DataFrame) -> pd.DataFrame:
+def tf_290124_numu_energy(df: _pd.DataFrame) -> _pd.DataFrame:
     """\
     Transform: 29/01/2024
     ---------------------
-    Restricts the muon-neutrino energy to be between 0 and 5.
+    Restricts the muon-neutrino energy to be between 0 and 5 GeV.
     """
     targets = [
         'trueEnu',
@@ -52,7 +81,7 @@ def tf_290124_numu_energy(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 
 
-def tf_290124_valid_pid(df: pd.DataFrame) -> pd.DataFrame:
+def tf_290124_valid_pid(df: _pd.DataFrame) -> _pd.DataFrame:
     """\
     Transform: 29/01/2024
     ---------------------
@@ -76,18 +105,29 @@ def tf_290124_valid_pid(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def tf_050224_max_prongs(
-        df: pd.DataFrame,
+        df: _pd.DataFrame,
         max_prongs: int = 5
-    ) -> pd.DataFrame:
+    ) -> _pd.DataFrame:
+    """\
+    Transform: 05/02/24
+    -------------------
+    Limits the number of max prongs to a certain amount.
+    """
     df_copy = df.copy()
 
     return df_copy[df_copy['rec.trk.kalman.ntracks'] <= max_prongs]
 
 
 def tf_050224_add_padding(
-        df: pd.DataFrame,
+        df: _pd.DataFrame,
         max_prongs: int = 5
-    ) -> pd.DataFrame:
+    ) -> _pd.DataFrame:
+    """\
+    Transform 05/02/24
+    ------------------
+    Note: This transform can only be called after `tf_050224_add_padding`.
+    Adds padding ([0, 0, ...]) to make prong variables of equal length.
+    """
     df_copy = df.copy()
 
     targets = [
@@ -118,17 +158,17 @@ def tf_050224_add_padding(
     def add_padding(row):
         for target in targets:
             padding = max_prongs - len(row[target])
-            row[target] = np.concatenate((row[target], [0] * padding))
+            row[target] = _np.concatenate((row[target], [0] * padding))
         return row
 
     return df_copy.apply(add_padding, axis=1)  # type: ignore
 
 
-def tf_120224_numu_energy(df: pd.DataFrame) -> pd.DataFrame:
+def tf_120224_numu_energy(df: _pd.DataFrame) -> _pd.DataFrame:
     """\
     Transform: 12/02/2024
     ---------------------
-    Restricts the muon-neutrino energy to be between 0 and 5.
+    Restricts the muon-neutrino energy to be between 0 and 5 GeV.
     """
     targets = [
         'rec.mc.nu.E',
@@ -144,9 +184,14 @@ def tf_120224_numu_energy(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 
 
-def tf_120224_first_prong(df: pd.DataFrame) -> pd.DataFrame:
+def tf_120224_first_prong(df: _pd.DataFrame) -> _pd.DataFrame:
+    """\
+    Transform 12/02/24
+    ------------------
+    Only keeps data for the first prong.
+    """
     df_copy = df.copy()
-    
+   
     targets = [
         'ana.trk.kalman.tracks.cosBeam', 
 	    'ana.trk.kalman.tracks.PtToPmu',
