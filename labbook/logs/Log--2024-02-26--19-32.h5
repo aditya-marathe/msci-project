@@ -1,0 +1,40 @@
+{
+    "Cuts": [
+        "Detector Quality",
+        "Data Quality",
+        "Cosmic Rej.",
+        "Veto"
+    ],
+    "Transforms": [
+        "tf_290124_positive_energies",
+        "tf_290124_valid_pid",
+        "tf_120224_first_prong"
+    ],
+    "XCols": [
+        "rec.sel.cvnloosepreselptp.cosmicid",
+        "rec.sel.cvnloosepreselptp.ncid",
+        "rec.sel.cvnloosepreselptp.numuid",
+        "rec.sel.remid.pid",
+        "rec.sel.scann.scpid",
+        "rec.energy.numu.lstmmuon"
+    ],
+    "YCols": [
+        "ana.cat.event_type"
+    ],
+    "XDataCols": [
+        "rec.sel.cvnloosepreselptp.cosmicid",
+        "rec.sel.cvnloosepreselptp.ncid",
+        "rec.sel.cvnloosepreselptp.numuid",
+        "rec.sel.remid.pid",
+        "rec.sel.scann.scpid",
+        "rec.energy.numu.lstmmuon"
+    ],
+    "YDataCols": [
+        "ana.cat.event_type"
+    ],
+    "ModelDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-02-26--19-32.pickle",
+    "LogDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-02-26--19-32.h5",
+    "Time": "26-02-2024 19:32",
+    "Comments": "Classifier: Random Forest\n-------------------------\n\nModel parameters were fine-tuned using `RandomizedSearchCV`.\n\nThe best parameters were found to be:\n{'n_estimators': 200, 'min_samples_split': 2, 'min_samples_leaf': 3, 'min_impurity_decrease': 0.6, 'max_leaf_nodes': 100, 'max_features': None, 'max_depth': 100, 'criterion': 'entropy', 'class_weight': 'balanced'}\n\nI used the precision as the score, and got the best score of RandomForestClassifier(class_weight='balanced', criterion='entropy',\n                       max_depth=100, max_features=None, max_leaf_nodes=100,\n                       min_impurity_decrease=0.6, min_samples_leaf=3,\n                       n_estimators=200).\n\nTesting the classifier I found that cut-based analysis results in background contamination of about 0.3%, but this classifier has a background contamination of 3%!. That is 10x more!\n\nHowever, there are 2.4x more signal events in the data. Also, rejecting the background events and reapplying all the cuts (inc. PID cut) except for the containment resulted in a 0.4% background contamination with a 2x increase in the signal count.\n\nBy reapplying the cuts, we can see the main issue with our classifier - it is falsely classifying NC and other background events as signal!\n",
+    "Flagged": false
+}

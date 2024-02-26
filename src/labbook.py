@@ -25,8 +25,16 @@ import json
 
 from datetime import datetime
 
-import tensorflow as tf
+import joblib
+
+# import tensorflow as tf
 from tensorflow import keras
+
+_CONFIG_REQUIRE = {
+    'Transforms',
+    'XDataCols',
+    'YDataCols'
+}
 
 
 def _process_dir(
@@ -55,6 +63,63 @@ def _process_dir(
         )
 
     return dir_
+
+
+def _check_required_keys(config_dict: dict[str, Any]) -> None:
+    """\
+    Checks if the config. dictionary contains the required keys.
+    """
+    if _CONFIG_REQUIRE - set(config_dict.keys()):
+        raise ValueError(
+            'Log requires the following keys in the `config_dict`: '
+            ', '.join(list(_CONFIG_REQUIRE)) + '.'
+        )
+
+
+def _serialise(obj: Any, file_dir: str) -> None:
+    """\
+    Uses `joblib` to serialise objects, namely Sci-kit learn estimators or 
+    classifiers.
+    """
+    joblib.dump(
+        value=obj,
+        filename=file_dir
+    )
+
+
+def _deserialise(file_dir: str) -> Any:
+    return joblib.load(filename=file_dir)
+
+
+def _serialise_objects(
+        objs: dict[str, Any],
+        time_str: str,
+        pkl_dir: pathlib.Path
+    ) -> dict[str, str]:
+    """\
+    
+    """
+    serialised_dict = dict()
+
+    for obj_name, obj in objs.items():
+        serialised_dict[obj_name] = str(
+            pkl_dir.resolve() / f'{obj_name}--{time_str}.pickle'
+        )
+        _serialise(obj=obj, file_dir=serialised_dict[obj_name])
+
+    return serialised_dict
+
+
+def _deserialise_objects(file_dir_dict: dict[str, str]) -> dict[str, Any]:
+    """\
+    
+    """
+    obj_dict = dict()
+
+    for name, file_dir in file_dir_dict.items():
+        obj_dict[name] = _deserialise(file_dir=file_dir)
+
+    return obj_dict
 
 
 def add_log(
@@ -98,6 +163,7 @@ def add_log(
     model_dir = _process_dir(lb_dir / 'models')
     hist_dir = _process_dir(lb_dir / 'history')
     log_dir = _process_dir(lb_dir / 'logs')
+    pkl_dir = _process_dir(lb_dir / 'pickled')
 
     # We do not want to modify the original!
     config_dict = config_dict.copy()
@@ -107,17 +173,7 @@ def add_log(
     filename_time_string = current_time.strftime('%Y-%m-%d--%H-%M')
 
     # Does the config. dictionary have the required keys?
-    config_require = {
-        'Transforms',
-        'XDataCols',
-        'YDataCols'
-    }
-
-    if config_require - set(config_dict.keys()):
-        raise ValueError(
-            'Log requires the following keys in the `config_dict`: '
-            '\'Transforms\', \'XDataCols\', and \'YDataCols\'.'
-        )
+    _check_required_keys(config_dict=config_dict)
 
     # Store a reference to the model's save file and its history, and the log
     config_dict['ModelDir'] = str(
@@ -135,6 +191,14 @@ def add_log(
     config_dict['Comments'] = comments
     config_dict['Flagged'] = False
 
+    # Serialise the other stuff as well...
+    if seralise_objects is not None:
+        config_dict['SerialisedDir'] = _serialise_objects(
+            objs=seralise_objects,
+            time_str=filename_time_string,
+            pkl_dir=pkl_dir
+        )
+
     # Save the model, history and log file...
     model.save(config_dict['ModelDir'])
 
@@ -145,9 +209,65 @@ def add_log(
         json.dump(config_dict, file, indent=4)
 
     # Verbosity for some peace of mind...
-    print(
-        f'LabBook | {config_dict["Time"]} | Log saved!'
+    print(f'LabBook  | {config_dict["Time"]} | Log saved!')
+
+
+def add_log_skl(
+        comments: str,
+        config_dict: dict[str, Any],
+        model: Any,
+        lb_dir: str | pathlib.Path,
+        seralise_objects: dict[str, Any] | None = None
+    ) -> None:
+    """\
+    Add a new log to the lab book - specifically Sci-kit Learn models.
+    """
+    # Convert input directory into `Path` object
+    lb_dir = _process_dir(lb_dir)
+
+    model_dir = _process_dir(lb_dir / 'models')
+    log_dir = _process_dir(lb_dir / 'logs')
+    pkl_dir = _process_dir(lb_dir / 'pickled')
+
+    # Does the config. dictionary have the required keys?
+    _check_required_keys(config_dict=config_dict)
+
+    # We do not want to modify the original!
+    config_dict = config_dict.copy()
+
+    # Current time for file naming...
+    current_time = datetime.now()
+    filename_time_string = current_time.strftime('%Y-%m-%d--%H-%M')
+
+    # Store a reference to the model's save file and its history, and the log
+    config_dict['ModelDir'] = str(
+        model_dir.resolve() / f'Model--{filename_time_string}.pickle'
     )
+    config_dict['LogDir'] = str(
+        log_dir.resolve() / f'Log--{filename_time_string}.h5'
+    )
+
+    # For when I am looking back at old models after a week...
+    config_dict['Time'] = current_time.strftime('%d-%m-%Y %H:%M')
+    config_dict['Comments'] = comments
+    config_dict['Flagged'] = False
+
+    # Serialise the other stuff as well...
+    if seralise_objects is not None:
+        config_dict['SerialisedDir'] = _serialise_objects(
+            objs=seralise_objects,
+            time_str=filename_time_string,
+            pkl_dir=pkl_dir
+        )
+
+    # Save the model and log file...
+    _serialise(obj=model, file_dir=config_dict['ModelDir'])
+
+    with open(config_dict['LogDir'], 'w') as file:  # type: ignore
+        json.dump(config_dict, file, indent=4)
+
+    # Verbosity for some peace of mind...
+    print(f'LabBook  | {config_dict["Time"]} | Log saved!')
 
 
 def load_model_from_log(log_file_dir: str | pathlib.Path) -> dict[str, Any]:
@@ -172,21 +292,22 @@ def load_model_from_log(log_file_dir: str | pathlib.Path) -> dict[str, Any]:
     current_time_string = current_time.strftime('%d-%m-%Y %H:%M')
 
     # Read the log file...
-    with open(log_file_dir, 'r') as file:
+    with open(log_file_dir, 'r') as file:  # type: ignore
         log = json.load(file)
 
     # Load all the stuff
     model = keras.models.load_model(filepath=log['ModelDir'])
 
-    with open(log['HistoryDir'], 'r') as file:
+    with open(log['HistoryDir'], 'r') as file:  # type: ignore
         history = json.load(file)
 
-    # Verbosity
-    print(
-        f'LabBook | {current_time_string} | Loaded log from {log["Time"]}!'
-    )
+    if log.get('SerialisedDir') is not None:
+        serialised = _deserialise_objects(
+            file_dir_dict=log['SerialisedDir']
+        )
 
-    # TODO: Also return the seralised stuff...
+    # Verbosity
+    print(f'LabBook  | {current_time_string} | Loaded log from {log["Time"]}!')
 
     return {
         'Model': model,

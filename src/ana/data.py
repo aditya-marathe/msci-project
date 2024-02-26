@@ -25,6 +25,7 @@ import h5py
 
 import pandas as pd
 
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 # Local
@@ -672,7 +673,7 @@ class NOvAData:
 
         return NOvAData(table=table_copy)
 
-    def reset_index(self, inplace=True) -> None:
+    def reset_index(self, inplace=False) -> None:
         """\
         Resets the index from `MutiIndex` based on the 'run', 'subrun', etc. to
         an simple `Index` - can save some memory, and make it easier to ac.
