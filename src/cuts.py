@@ -7,9 +7,9 @@ Aditya Marathe
 Script contains the `Cuts` class used to define and apply cuts to NOvA simulated
 data. Also, contains pre-defined cut functions that can be either loaded into a 
 `Cuts` instance or used as is.
-"""
 
-# TODO: Add more detail to some of the docstrings here...
+!!DEPRECATED!!
+"""
 
 from __future__ import absolute_import
 from __future__ import annotations

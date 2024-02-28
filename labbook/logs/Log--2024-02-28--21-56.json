@@ -1,0 +1,34 @@
+{
+    "Cuts": [
+        "Detector Quality",
+        "Data Quality",
+        "Cosmic Rej.",
+        "Veto"
+    ],
+    "Transforms": [
+        "tf_290124_positive_energies",
+        "tf_290124_valid_pid",
+        "tf_120224_first_prong",
+        "tf_280224_encode_event_type",
+        "tf_280224_class_balance"
+    ],
+    "XDataCols": [
+        "rec.sel.cvnloosepreselptp.cosmicid",
+        "rec.sel.cvnloosepreselptp.ncid",
+        "rec.sel.cvnloosepreselptp.numuid",
+        "rec.sel.remid.pid",
+        "rec.sel.scann.scpid",
+        "rec.energy.numu.lstmmuon"
+    ],
+    "YDataCols": [
+        "ana.cat.event_type"
+    ],
+    "ModelDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-02-28--21-56.pickle",
+    "LogDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-02-28--21-56.json",
+    "Time": "28-02-2024 21:56",
+    "Comments": "Classifier: Random Forest\n-------------------------\n\nModel parameters were fine-tuned using `RandomizedSearchCV`.\n\nThe best parameters were found to be:\n{'n_estimators': 800, 'min_samples_split': 202, 'min_samples_leaf': 131, 'min_impurity_decrease': 0.0, 'max_leaf_nodes': 160, 'max_features': 1, 'max_depth': 211, 'criterion': 'gini', 'class_weight': None}\n\nI used the precision as the score, and got the best score of 0.9501607643968274.\n\nApplied a standard scaler to the following x-variables:\n['rec.energy.numu.lstmmuon']\n\nNot too bad... needs more analysis!\n",
+    "Flagged": false,
+    "SerialisedDir": {
+        "StandardScaler": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\pickled\\StandardScaler--2024-02-28--21-56.pickle"
+    }
+}

@@ -36,10 +36,10 @@
     "YDataCols": [
         "trueEnu"
     ],
-    "Log": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-01-19--00-33.json",
-    "Model": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-01-19--00-33.h5",
-    "History": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\history\\Hist--2024-01-19--00-33.json",
-    "Comments": "My first ever working(-ish) model! :D\n-------------------------------------\n\nOptimizer: Adam(learning rate = 1E-3)\nLoss: MSE\n\nEpochs: 100\nCallbacks: EarlyStopping(patience = 10)\n\nI am using sample weights that I initialised like so:\n```\nsample_weight = np.ones(shape=tt_data['TrainY'].shape)\nsample_weight[tt_data['TrainY'] <= 1.5] = 6.\nsample_weight[tt_data['TrainY'] >= 2.2] = 2.\n```\n\n\n",
+    "LogDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-01-19--00-33.json",
+    "ModelDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-01-19--00-33.h5",
+    "HistoryDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\history\\Hist--2024-01-19--00-33.json",
+    "Comments": "My first ever working(-ish) model! :D\n-------------------------------------\n\nOptimizer: Adam(learning rate = 1E-3)\nLoss: MSE\n\nEpochs: 100\nCallbacks: EarlyStopping(patience = 10)\n\nI am using sample weights that I initialised like so:\n```\nsample_weight = np.ones(shape=tt_data['TrainY'].shape)\nsample_weight[tt_data['TrainY'] <= 1.5] = 6.\nsample_weight[tt_data['TrainY'] >= 2.2] = 2.\n```\n",
     "Time": "19-01-2024 00:33",
     "Flagged": false
 }

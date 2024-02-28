@@ -15,22 +15,19 @@ import sys
 
 from numpy.random import RandomState
 
-import pandas as pd
-
 import sklearn as skl
 from sklearn.ensemble import RandomForestClassifier
-
-import joblib
 
 sys.path.insert(1, './src/')
 
 import ana
-import plotting
-import utils
-import transforms
-
+# import plotting
+# import labbook
 
 verbose: bool = True
+
+ana.NOvAData.verbose = verbose
+ana.Cuts.verbose = verbose
 
 
 config = {
@@ -41,24 +38,24 @@ config = {
         'Veto'
     ],
     'Transforms': [
-        transforms.tf_290124_positive_energies,
-        transforms.tf_290124_valid_pid,
-        transforms.tf_120224_first_prong
+        'tf_290124_positive_energies',
+        'tf_290124_valid_pid',
+        'tf_120224_first_prong'
     ],
-    'XCols': [
+    'XDataCols': [
         'rec.sel.cvnloosepreselptp.cosmicid',
         'rec.sel.cvnloosepreselptp.ncid',
         'rec.sel.cvnloosepreselptp.numuid',
         'rec.sel.remid.pid',
         'rec.sel.scann.scpid'
     ],
-    'YCols': [
+    'YDataCols': [
         'ana.cat.event_type'
     ]
 }
 
 
-def log(message: str = '') -> None:
+def log(message: str) -> None:
     """\
     Prints a log message to the consle.
     
@@ -71,7 +68,8 @@ def log(message: str = '') -> None:
         print(f'Main     | {message}')
 
 
-log(f'Sci-kit Learn version {skl.__version__}')
+log('Random Forest Classifer.')
+log(f'Sci-kit Learn version {skl.__version__}.')
 
 
 def load_training_data() -> ana.NOvAData:
@@ -91,7 +89,7 @@ def load_training_data() -> ana.NOvAData:
     return data
 
 
-def data_preprocessing(data: pd.DataFrame) -> pd.DataFrame:
+def data_preprocessing(data: ana.NOvAData) -> None:
     """\
     Data preprocessing pipeline.
         1. Apply the required NOvA cuts.
@@ -101,25 +99,10 @@ def data_preprocessing(data: pd.DataFrame) -> pd.DataFrame:
     """
     cuts = ana.Cuts.init_nova_cuts()
 
+    data.apply_transforms(config['Transforms'], inplace=True)
+
     for cut in config['Cuts']:
-        data = cuts.apply_cut(cut, data)
-
-    for tf in config['Transforms']:
-        data = tf(df=data)
-        log(f'Applied a transform which {transforms.get_tf_info(tf=tf)}')
-
-    return data
-
-
-def get_required_features(data: pd.DataFrame) -> pd.DataFrame:
-    """\
-    Get the features used for training/testing.
-    """
-    return data[config['XCols'] + config['YCols']]
-
-
-def grid_search() -> None:
-    return
+        data.table = cuts.apply_cut(cut, data.table)
 
 
 def main(*a, **kw) -> int:
@@ -142,8 +125,7 @@ def main(*a, **kw) -> int:
 
     log('Before preprocessing: ' + str(data))
 
-    data.table = data_preprocessing(data=data.table)
-    data.table = get_required_features(data=data.table)
+    data_preprocessing(data=data)
 
     log('After preprocessing:  ' + str(data))
 
@@ -152,8 +134,8 @@ def main(*a, **kw) -> int:
     random_state = RandomState(seed=42)
 
     tt_split = data.train_test_split(
-        x_cols=config['XCols'],
-        y_cols=config['YCols'],
+        x_cols=config['XDataCols'],
+        y_cols=config['YDataCols'],
         test_size=0.3,
         shuffle=True,
         random_state=random_state
@@ -175,7 +157,7 @@ def main(*a, **kw) -> int:
     )
     _test_bak_count = (
         _test_value_counts[0.]
-        # + _test_value_counts[2.]
+        + _test_value_counts[2.]
         + _test_value_counts[3.]
         + _test_value_counts[4.]
     )
@@ -186,7 +168,9 @@ def main(*a, **kw) -> int:
 
     # (4)
 
-    model = RandomForestClassifier()
+    model = RandomForestClassifier(verbose=0)
+
+    # model = labbook.load_model('./../labbook/IDKIJDIEFjow')
 
     log('Model built.')
 
@@ -195,7 +179,7 @@ def main(*a, **kw) -> int:
     log('Training model...')
 
     model.fit(
-        tt_split['XTrain'].to_numpy(),
+        tt_split['XTrain'],
         tt_split['YTrain'].to_numpy().flatten()
     )
 

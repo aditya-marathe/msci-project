@@ -7,6 +7,21 @@ Aditya Marathe
 
 """
 
+from __future__ import absolute_import
+from __future__ import annotations
+from __future__ import unicode_literals
+
+__all__ = [
+    'get_tf_info',
+    'tf_290124_positive_energies',
+    'tf_290124_numu_energy',
+    'tf_290124_valid_pid',
+    'tf_050224_max_prongs',
+    'tf_050224_add_padding',
+    'tf_120224_numu_energy',
+    'tf_120224_first_prong'
+]
+
 from typing import Callable as _Callable
 
 import numpy as _np
@@ -206,3 +221,41 @@ def tf_120224_first_prong(df: _pd.DataFrame) -> _pd.DataFrame:
         )
 
     return df_copy
+
+
+def tf_280224_encode_event_type(df: _pd.DataFrame) -> _pd.DataFrame:
+    """\
+    Transform: 28/02/24
+    -------------------
+
+    Encodes the event type as 1 for (A-)NuMu CC and 0 for background.
+    """
+    df_copy = df.copy()
+
+    df_copy.loc[:, 'ana.cat.event_type'] = (
+        (df_copy['ana.cat.event_type'] == 1)
+        + (df_copy['ana.cat.event_type'] == 2)
+    ) * 1.
+
+    return df_copy
+
+
+def tf_280224_class_balance(
+        df: _pd.DataFrame,
+        class_var: str = 'ana.cat.event_type',
+        classes: tuple[int, ...] = (0, 1)
+    ) -> _pd.DataFrame:
+    """\
+    Transform 28/02/24
+    ------------------
+    Note: `DataFrame` must have reset index!
+    Balances the number of events for each class.
+    """
+    class_df_list = [df[df[class_var] == class_] for class_ in classes]
+
+    min_events = min([len(df) for df in class_df_list])
+
+    for i, class_df in enumerate(class_df_list):
+        class_df_list[i] = class_df[:min_events]
+
+    return _pd.concat(class_df_list)

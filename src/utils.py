@@ -5,6 +5,8 @@ src / utils.py
 Aditya Marathe
 
 Script contains the most basic tools required throughout the project.
+
+!!DEPRECATED!!
 """
 from __future__ import absolute_import
 from __future__ import annotations

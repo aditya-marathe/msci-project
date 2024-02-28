@@ -1,5 +1,7 @@
 """
 Functions used in the Initial Analysis notebook.
+
+!!DEPRECATED!!
 """
 
 # TODO: Delete this file...

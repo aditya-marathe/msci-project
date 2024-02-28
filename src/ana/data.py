@@ -13,6 +13,7 @@ from __future__ import with_statement
 
 __all__ = [
     'EVENT_TYPE_MAP',
+    'VARS_TO_SCALE',
     'NOvAData'
 ]
 
@@ -25,13 +26,12 @@ import h5py
 
 import pandas as pd
 
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 
 # Local
 
-from detectors import *  # type: ignore
-
+import detectors
+import transforms as transforms_
 
 # TODO: Some of the functions here can be parallelised easily, could save time
 #       for much large datasets, so something to consier for future updates...
@@ -49,14 +49,14 @@ EVENT_TYPE_MAP = {
 
 _VARS_TO_EXTRACT = {
     
-    # Energy predictor branch
+    # Energy estimator branch
 
     'rec.energy.numu': [
-        'E',  # Old energy predictor
+        'E',  # Old energy estimator
         'calccE',
         'hadcalE',
         'hadtrkE',
-        'lstmmuon',  # LSTM energy predictor
+        'lstmmuon',  # LSTM energy estimator
         'lstmnu',
         'regcvnhadE',
         'trkccE',
@@ -150,9 +150,43 @@ _VARS_TO_EXTRACT = {
         'mode',
         'iscc'
     ],
-    'rec.mc.nu.beam': [
-        'potnum'  # Number of POT (Protons On Target)
-    ]
+    # 'rec.mc.nu.beam': [  --> Not sure how to use this, and it is not required
+    #                          for my analysis anyway!
+    #     'potnum'  # Number of POT (Protons On Target)
+    # ]
+}
+
+VARS_TO_SCALE = {
+    'rec.energy.numu.E',
+    'rec.energy.numu.calccE',
+    'rec.energy.numu.hadcalE',
+    'rec.energy.numu.hadtrkE',
+    'rec.energy.numu.lstmmuon',
+    'rec.energy.numu.lstmnu',
+    'rec.energy.numu.regcvnhadE',
+    'rec.energy.numu.trkccE',
+    'rec.energy.numu.recomuonE',
+
+    'rec.energy.numu.hadclust.calE',
+    # 'rec.energy.numu.hadclust.nhit',
+
+    # 'rec.sel.contain.kalfwdcell',
+    # 'rec.sel.contain.kalbakcell',
+    # 'rec.sel.contain.cosfwdcell',
+    # 'rec.sel.contain.cosbakcell',
+
+    'rec.slc.calE',
+    # 'rec.slc.firstplane',
+    # 'rec.slc.lastplane',
+    # 'rec.slc.nhit',
+    # 'rec.slc.ncontplanes',
+
+    # 'rec.trk.cosmic.ntracks',
+
+    # 'rec.trk.kalman.ntracks',
+    # 'rec.trk.kalman.ntracks2d',
+
+    'rec.mc.nu.E'
 }
 
 _DIFF_LEN_BRANCHES = [
@@ -183,6 +217,18 @@ _TABLE_COL_FILLNA_MAP = {
 
 # Helper functions -------------------------------------------------------------
 
+def _log(message: str) -> None:
+    """\
+    Prints a log message to the consle.
+    
+    Args
+    ----
+    message: str
+        Log message.
+    """
+    if NOvAData.verbose:
+        print(f'NOvAData | {message}')
+
 
 def _get_var(h5file: h5py.File, branch: str, var: str) -> npt.NDArray:
     """\
@@ -204,7 +250,7 @@ def _get_var(h5file: h5py.File, branch: str, var: str) -> npt.NDArray:
     npt.NDArray
         A 1-dimensional array of the target variable data.
     """
-    return h5file[branch][var][:].flatten()
+    return h5file[branch][var][:].flatten()  # type: ignore
 
 
 def _get_multi_index(
@@ -239,8 +285,8 @@ def _get_multi_index(
 
     if unique:
         concat_indices, unique_indices = np.unique(
-            concat_indices, 
-            return_inverse=True, 
+            concat_indices,
+            return_inverse=True,
             axis=0
         )
 
@@ -250,14 +296,14 @@ def _get_multi_index(
         return (
             pd.MultiIndex.from_tuples(
                 tuples=concat_indices,
-                name=_TABLE_INDEX_NAMES
+                names=_TABLE_INDEX_NAMES
             ),
-            unique_indices
+            unique_indices  # type: ignore
         )
 
     return pd.MultiIndex.from_tuples(
         tuples=concat_indices,
-        name=_TABLE_INDEX_NAMES
+        names=_TABLE_INDEX_NAMES
     )
 
 
@@ -315,6 +361,10 @@ def _get_branch_df(
 # Class ------------------------------------------------------------------------
 
 
+# Notes: There is probably a way to implement this by inheriting the Pandas
+# `DataFrame` class, but this is good enough for now...
+
+
 class NOvAData:
     """\
     Used to load and store a sample of the simulated NOvA dataset.
@@ -347,11 +397,10 @@ class NOvAData:
         table: pd.DataFrame
             Table containing NOvA data.
         """
-        self.table = table
+        self.table: pd.DataFrame = table
         self._remove_nansense_data()
 
-        if NOvAData.verbose:
-            print('NOvAData | Initialised.')
+        _log(f'Initialised {str(self)}.')
 
     @staticmethod
     def init_from_copymerge_h5(h5dirs: list[str | pathlib.Path]) -> 'NOvAData':
@@ -371,8 +420,7 @@ class NOvAData:
 
         tables = list()
 
-        if NOvAData.verbose:
-            print('NOvAData | Loading tables from CM HDF5 files...')
+        _log('Loading tables from copymerged HDF5 files...')
 
         for i_dir, h5dir in enumerate(h5dirs):
             with h5py.File(name=h5dir, mode='r') as h5file:
@@ -423,11 +471,8 @@ class NOvAData:
 
             tables.append(table)
 
-            if NOvAData.verbose:
-                progress = f'{i_dir + 1} / {len(h5dirs)}'
-                print(
-                    f'NOvAData | Loaded table from CM HDF5 files ({progress}).'
-                )
+            progress = f'{i_dir + 1} / {len(h5dirs)}'
+            _log(f'Loaded table from copymerged HDF5 files ({progress}).')
 
         concat_table = pd.concat(tables)
 
@@ -451,16 +496,14 @@ class NOvAData:
         """
         tables = list()
 
-        if NOvAData.verbose:
-            print('NOvAData | Loading tables from HDF5 files...')
+        _log('Loading tables from saved HDF5 file(s)...')
 
         for i_dir, h5dir in enumerate(h5dirs):
             tables.append(
                 pd.read_hdf(h5dir, key='table')
             )
-            if NOvAData.verbose:
-                progress = f'{i_dir + 1} / {len(h5dirs)}'
-                print(f'NOvAData | Loaded table from HDF5 files ({progress}).')
+            progress = f'{i_dir + 1} / {len(h5dirs)}'
+            _log(f'Loaded table from saved HDF5 file(s) ({progress}).')
         
         concat_table = pd.concat(tables)
 
@@ -497,7 +540,7 @@ class NOvAData:
         Args
         ----
         inplace: bool
-            If `True`, this function adds the new columns to this table, if 
+            If `True`, this method adds the new columns to this table, if 
             `False` then it returns a new `NOvAData` with the updated table. 
             Defaults to `False`.
 
@@ -552,9 +595,8 @@ class NOvAData:
             table_copy['ana.mc.flag.isANuE'] 
                 * table_copy['ana.mc.flag.isCC']
         )
-
-        if NOvAData.verbose:
-            print('NOvAData | Filled MC truth flags.')
+        
+        _log('Filled MC truth flags.')
         
         # Replace with the updated table. This is done to ensure that there
         # are no unfinished operations (due to exceptions) becasue that
@@ -576,7 +618,7 @@ class NOvAData:
         Args
         ----
         inplace: bool
-            If `True`, this function adds the new columns to this table, if 
+            If `True`, this method adds the new columns to this table, if 
             `False` then it returns a new `NOvAData` with the updated table. 
             Defaults to `False`.
 
@@ -587,11 +629,13 @@ class NOvAData:
         """
         table_copy = self.table.copy()
 
-        fd_r_beam_dir = calculate_beam_direction_at_fd(POINT_S)
+        fd_r_beam_dir = detectors.calculate_beam_direction_at_fd(
+            detectors.POINT_S
+        )
 
         table_copy['ana.trk.kalman.tracks.cosBeam'] = (
-            table_copy['rec.trk.kalman.tracks.dir.x'] * fd_r_beam_dir[0] 
-            + table_copy['rec.trk.kalman.tracks.dir.y'] * fd_r_beam_dir[1] 
+            table_copy['rec.trk.kalman.tracks.dir.x'] * fd_r_beam_dir[0]
+            + table_copy['rec.trk.kalman.tracks.dir.y'] * fd_r_beam_dir[1]
             + table_copy['rec.trk.kalman.tracks.dir.z'] * fd_r_beam_dir[2]
         )
 
@@ -603,30 +647,29 @@ class NOvAData:
             table_copy['rec.energy.numu.lstmmuon']**2 - (105.658E-3)**2
         )
         table_copy['ana.trk.kalman.tracks.Pt'] = (
-            table_copy['ana.trk.kalman.tracks.PtToPmu'] 
+            table_copy['ana.trk.kalman.tracks.PtToPmu']
             * table_copy['ana.trk.kalman.tracks.Pmu']
         )
 
         table_copy['ana.trk.kalman.tracks.Qsquared'] = (
-            2 * table_copy['rec.energy.numu.lstmnu'] 
+            2 * table_copy['rec.energy.numu.lstmnu']
             * (
-                table_copy['rec.energy.numu.lstmmuon'] 
-                - table_copy['ana.trk.kalman.tracks.Pmu'] 
+                table_copy['rec.energy.numu.lstmmuon']
+                - table_copy['ana.trk.kalman.tracks.Pmu']
                 * table_copy['ana.trk.kalman.tracks.cosBeam']
-            ) 
+            )
             - (105.658E-3)**2
         )
         table_copy['ana.trk.kalman.tracks.W'] = (
             (
                 0.938272**2 + 2 * 0.938272 * (
-                    table_copy['rec.energy.numu.lstmnu'] 
+                    table_copy['rec.energy.numu.lstmnu']
                     - table_copy['rec.energy.numu.lstmmuon']
                 ) - table_copy['ana.trk.kalman.tracks.Qsquared']
             )**0.5
         )
 
-        if NOvAData.verbose:
-            print('NOvAData | Filled track kinematics.')
+        _log('Filled track kinematics.')
     
         if inplace:
             self.table = table_copy
@@ -645,7 +688,7 @@ class NOvAData:
         Args
         ----
         inplace: bool
-            If `True`, this function adds the new columns to this table, if 
+            If `True`, this method adds the new columns to this table, if 
             `False` then it returns a new `NOvAData` with the updated table. 
             Defaults to `False`.
 
@@ -664,8 +707,7 @@ class NOvAData:
             # 0 := Other background e.g., cosmic events...
         )
 
-        if NOvAData.verbose:
-            print('NOvAData | Filled categorical data.')
+        _log('Filled categorical data.')
 
         if inplace:
             self.table = table_copy
@@ -673,14 +715,55 @@ class NOvAData:
 
         return NOvAData(table=table_copy)
 
-    def reset_index(self, inplace=False) -> None:
+    def apply_transforms(
+            self,
+            transforms: list[str],
+            inplace: bool = False
+        ) -> 'NOvAData' | None:
+        """\
+        Apply transformations using given functions.
+    
+        Args
+        ----
+        transforms: list[str]
+            List of names of the transformation functions from the 
+            `src/transforms.py` module.
+        inplace: bool
+            If `True`, this method applies the transformations to this table, if 
+            `False` then it returns a new `NOvAData` with the applied 
+            transformations. Defaults to `False`.
+
+        Returns
+        -------
+        NOvAData | None
+            If `inplace` was set to `False` a new `NOvAData` object is returned.
+        """
+        table_copy = self.table.copy()
+
+        for tf_name in transforms:
+            tf = getattr(transforms_, tf_name, None)
+            if tf and callable(tf):
+                table_copy = tf(table_copy)
+                _log(
+                    f'Applied a transform which {transforms_.get_tf_info(tf)}'
+                )
+            else:
+                _log(f'Unable to apply transform `{tf_name}`.')
+
+        if inplace:
+            self.table = table_copy
+            return
+
+        return NOvAData(table=table_copy)
+
+    def reset_index(self, inplace: bool = False) -> 'NOvAData' | None:
         """\
         Resets the index from `MutiIndex` based on the 'run', 'subrun', etc. to
         an simple `Index` - can save some memory, and make it easier to ac.
         """
         table = self.table.reset_index(drop=True, inplace=inplace)
 
-        if table is not None:
+        if (not inplace) and table is not None:
             return NOvAData(table=table)
 
     def train_test_split(
@@ -709,7 +792,8 @@ class NOvAData:
         
         Returns
         -------
-        dict[str, pd.DataFrame]
+        dict[str, pd.DataFrame | pd.Series] 
+        | tuple[dict[str, pd.DataFrame | pd.Series], StandardScaler]
             A dictionary containing the x, y training and testing data indicated
             by the keys: 'XTrain', 'YTrain', 'XTest', and 'YTest'.
         """
@@ -722,11 +806,14 @@ class NOvAData:
             random_state=random_state
         )
 
+        y_train = train_table[y_cols]
+        y_test = test_table[y_cols]
+
         return {
             'XTrain': train_table[x_cols],
-            'YTrain': train_table[y_cols],
+            'YTrain': y_train,
             'XTest': test_table[x_cols],
-            'YTest': test_table[y_cols]
+            'YTest': y_test
         }
 
     def save_table(self, h5dir: str | pathlib.Path) -> None:
@@ -746,8 +833,30 @@ class NOvAData:
             data_columns=True
         )
 
-        if NOvAData.verbose:
-            print('NOvAData | Saved table to HDF5.')
+        _log('Saved table to HDF5.')
+
+    def get_scalable_vars(self) -> list[str]:
+        """
+        Gets the variables (columns) which are scalable in this dataset.
+
+        Returns
+        -------
+        list[str]
+            List of the column names that are scalable.
+        """
+        cols_set = set(self.table.columns)
+        return list(cols_set.intersection(VARS_TO_SCALE))
+
+    def copy(self) -> 'NOvAData':
+        """
+        Returns a copy of this `NOvAData` object.
+
+        Returns
+        -------
+        NOvAData
+            Copied `NOvAData` object.
+        """
+        return NOvAData(table=self.table.copy(deep=True))
 
     def __str__(self) -> str:
         n_features = len(self.table.columns)
