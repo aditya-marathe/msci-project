@@ -462,7 +462,7 @@ class NOvAData:
                             )
 
                         continue
-                   
+
                     # Normal case: When the variable has the expected column
                     # length.
                     for var in _VARS_TO_EXTRACT.get(branch, []):

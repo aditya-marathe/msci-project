@@ -248,7 +248,9 @@ def tf_280224_class_balance(
     """\
     Transform 28/02/24
     ------------------
-    Note: `DataFrame` must have reset index!
+    Note: `DataFrame` must have reset index! Also, of course this transform
+    should not be applied to the testing data - we do not know the classes 
+    before using the model!
     Balances the number of events for each class.
     """
     class_df_list = [df[df[class_var] == class_] for class_ in classes]

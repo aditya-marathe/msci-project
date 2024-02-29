@@ -347,6 +347,23 @@ def load_model(log_file_dir: str | pathlib.Path) -> dict[str, Any]:
     return output
 
 
+def load_last_model(lb_dir: str | pathlib.Path) -> dict[str, Any]:
+    """\
+    Loads the most recent saved model from the lab book.
+
+    Args
+    ----
+    log_file_dir: str | pathlib.Path
+        The directory to the specific log file.
+
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary containing the (keys) 'Model' and 'History'.
+    """
+    return NotImplemented
+
+
 # Browser Objects --------------------------------------------------------------
 
 class _AutoHideScrollbar(ttk.Scrollbar):
