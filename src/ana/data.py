@@ -102,7 +102,8 @@ _VARS_TO_EXTRACT = {
         'firstplane',
         'lastplane',
         'nhit',
-        'ncontplanes'
+        'ncontplanes',
+        'ncellsfromedge'
     ],
 
     # Beam spill branch
@@ -127,16 +128,20 @@ _VARS_TO_EXTRACT = {
         'start.x',
         'start.y',
         'start.z',
+        'stop.x',
+	    'stop.y',
+	    'stop.z',
         'len',
         'muonid',
         'rempid',
         'nhit',
         'nhitx',
         'nhity',
-        'calE',  # Calorimetric energy of all hits in the prong
+        'calE',
         'overlapE',
         'nplane',
-        'maxplanecont'
+        'maxplanecont',
+        # 'dedxllh'  # <---
     ],
 
     # MC Truth branch
@@ -150,9 +155,13 @@ _VARS_TO_EXTRACT = {
         'mode',
         'iscc'
     ],
-    # 'rec.mc.nu.beam': [  --> Not sure how to use this, and it is not required
-    #                          for my analysis anyway!
-    #     'potnum'  # Number of POT (Protons On Target)
+    'rec.mc.nu.beam': [  
+        'potnum'  # Number of POT (Protons On Target)
+    ],
+    # 'rec.training.cvnmaps': [
+    #     'cvnmap',
+    #     'hitfracy',
+    #     'hitfracx'
     # ]
 }
 
@@ -419,6 +428,7 @@ class NOvAData:
         """
 
         tables = list()
+        exception = False  # Flag for if an exception has occured...
 
         _log('Loading tables from copymerged HDF5 files...')
 
@@ -467,11 +477,27 @@ class NOvAData:
                     # length.
                     for var in _VARS_TO_EXTRACT.get(branch, []):
                         col_name = branch + '.' + var
-                        table[col_name] = _get_var(h5file, branch, var)
-
-            tables.append(table)
+                        try:
+                            table[col_name] = _get_var(h5file, branch, var)
+                        except ValueError as e:
+                            # This will happen becasue the `cosmiccvn` branch
+                            # could have 1 less 
+                            _log(
+                                'Unable to a load variable! The following '
+                                f'exception has occured:\n\n{e}\n'
+                            )
+                            exception = True
 
             progress = f'{i_dir + 1} / {len(h5dirs)}'
+
+            if exception:
+                _log(
+                    'Stopped loading from copymerged HDF5 files due to a caught'
+                    ' exception.'
+                )
+                break
+
+            tables.append(table)
             _log(f'Loaded table from copymerged HDF5 files ({progress}).')
 
         concat_table = pd.concat(tables)
@@ -551,15 +577,16 @@ class NOvAData:
         """
         table_copy = self.table.copy()
 
-        is_nu_event = table_copy['rec.mc.nnu'] > 0
+        is_nu_event = np.asarray(table_copy['rec.mc.nnu'] > 0, dtype=bool)
 
         # Event interaction
 
-        table_copy['ana.mc.flag.isCC'] = (
-            table_copy['rec.mc.nu.iscc'] * is_nu_event
+        table_copy['ana.mc.flag.isCC'] = np.asarray(
+            np.asarray(table_copy['rec.mc.nu.iscc'], dtype=bool) & is_nu_event,
+            dtype=bool
         )
         table_copy['ana.mc.flag.isNC'] = (
-            (table_copy['ana.mc.flag.isCC'] < 1) * is_nu_event
+            table_copy['ana.mc.flag.isCC'] < 1 & is_nu_event
         )
 
         # Specific event interactions
@@ -580,20 +607,20 @@ class NOvAData:
 
         table_copy['ana.mc.flag.isNuMuCC'] = (
             table_copy['ana.mc.flag.isNuMu'] 
-                * table_copy['ana.mc.flag.isCC']
+                & table_copy['ana.mc.flag.isCC']
         )
         table_copy['ana.mc.flag.isANuMuCC'] = (
             table_copy['ana.mc.flag.isANuMu'] 
-                * table_copy['ana.mc.flag.isCC']
+                & table_copy['ana.mc.flag.isCC']
         )
 
         table_copy['ana.mc.flag.isNuECC'] = (
             table_copy['ana.mc.flag.isNuE'] 
-                * table_copy['ana.mc.flag.isCC']
+                & table_copy['ana.mc.flag.isCC']
         )
         table_copy['ana.mc.flag.isANuECC'] = (
             table_copy['ana.mc.flag.isANuE'] 
-                * table_copy['ana.mc.flag.isCC']
+                & table_copy['ana.mc.flag.isCC']
         )
         
         _log('Filled MC truth flags.')

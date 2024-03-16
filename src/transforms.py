@@ -261,3 +261,16 @@ def tf_280224_class_balance(
         class_df_list[i] = class_df[:min_events]
 
     return _pd.concat(class_df_list)
+
+
+def tf_070324_only_signal_events(df: _pd.DataFrame) -> _pd.DataFrame:
+    """\
+    Transform 07/03/24
+    ------------------
+    Note: This also considers wrong-sign events as signal.
+    Only keeps the signal events.
+    """
+    return df[
+        (df['ana.mc.flag.isNuMuCC'] > 0.)
+        | (df['ana.mc.flag.isANuMuCC'] > 0.)  # Considers ANuMu CC as signal!
+    ]

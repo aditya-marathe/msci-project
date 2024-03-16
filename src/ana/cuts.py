@@ -111,7 +111,7 @@ def cut_numu_containment(df: pd.DataFrame) -> pd.Series:
     c = df['rec.sel.contain.cosfwdcell'] > 5
     d = df['rec.sel.contain.cosbakcell'] > 7
     e = df['rec.slc.firstplane'] > 2
-    f = 896 - df['rec.slc.lastplane'] > 3
+    f = (896 - df['rec.slc.lastplane']) > 3
     return  a & b & c & d & e & f
 
 

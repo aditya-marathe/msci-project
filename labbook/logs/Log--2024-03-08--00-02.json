@@ -1,0 +1,52 @@
+{
+    "Cuts": [
+        "Detector Quality",
+        "Data Quality",
+        "Cosmic Rej.",
+        "Veto",
+        "CVN PID Score",
+        "Not Containment"
+    ],
+    "Transforms": [
+        "tf_290124_positive_energies",
+        "tf_290124_valid_pid",
+        "tf_050224_max_prongs",
+        "tf_050224_add_padding",
+        "tf_070324_only_signal_events"
+    ],
+    "XDataCols": [
+        "rec.trk.kalman.ntracks",
+        "rec.trk.kalman.ntracks2d",
+        "rec.trk.kalman.tracks.calE",
+        "rec.trk.kalman.tracks.overlapE",
+        "rec.trk.kalman.tracks.nplane",
+        "rec.trk.kalman.tracks.maxplanecont",
+        "rec.trk.kalman.tracks.nhit",
+        "rec.trk.kalman.tracks.nhitx",
+        "rec.trk.kalman.tracks.nhity",
+        "rec.trk.kalman.tracks.dir.x",
+        "rec.trk.kalman.tracks.dir.y",
+        "rec.trk.kalman.tracks.dir.z",
+        "rec.trk.kalman.tracks.start.x",
+        "rec.trk.kalman.tracks.start.y",
+        "rec.trk.kalman.tracks.start.z",
+        "rec.trk.kalman.tracks.len",
+        "ana.trk.kalman.tracks.Pmu",
+        "rec.slc.calE",
+        "rec.slc.nhit",
+        "rec.energy.numu.lstmnu"
+    ],
+    "YDataCols": [
+        "rec.mc.nu.E"
+    ],
+    "ModelDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\models\\Model--2024-03-08--00-02.h5",
+    "HistoryDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\history\\Hist--2024-03-08--00-02.json",
+    "LogDir": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\logs\\Log--2024-03-08--00-02.json",
+    "Time": "08-03-2024 00:02",
+    "Comments": "Regressor: LSTM\n---------------\n\n\nCode\n----\n\ndef build_compile_model(\n        input_1_shape,\n        input_2_shape,\n    ) -> keras.models.Model:\n    # Branch #1\n    branch_1_input = keras.layers.Input(shape=input_1_shape)\n\n    # Pre-processing\n    branch_1 = keras.layers.BatchNormalization()(branch_1_input)\n    branch_1 = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_1)\n    branch_1 = keras.layers.BatchNormalization()(branch_1)\n    branch_1 = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_1)\n    branch_1 = keras.layers.BatchNormalization()(branch_1)\n    branch_1 = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_1)\n    branch_1 = keras.layers.BatchNormalization()(branch_1)\n    \n    # LSTM\n    branch_1 = keras.layers.Reshape((1, 128))(branch_1)\n    branch_1 = keras.layers.LSTM(32)(branch_1)\n\n    # Branch #2\n    branch_2_input = keras.layers.Input(shape=input_2_shape)\n    # branch_2_input = keras.layers.Reshape((3,))(branch_2_input)\n\n    branch_concat = keras.layers.concatenate([branch_1, branch_2_input])\n\n    # Post-processing\n    branch_concat = keras.layers.BatchNormalization()(branch_concat)\n    branch_concat = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_concat)\n    branch_concat = keras.layers.BatchNormalization()(branch_concat)\n    branch_concat = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_concat)\n    branch_concat = keras.layers.BatchNormalization()(branch_concat)\n    branch_concat = keras.layers.Dense(\n        units=128, \n        activation=keras.activations.relu\n    )(branch_concat)\n    branch_concat = keras.layers.BatchNormalization()(branch_concat)\n\n    # Output\n    output = keras.layers.Dense(\n        units=1, \n        activation=keras.activations.linear\n    )(branch_concat)\n\n    # Model\n    model = keras.models.Model(\n        name='model',\n        inputs=[branch_1_input, branch_2_input],\n        outputs=output\n    )\n\n    # Compile\n    model.compile(\n        optimizer=keras.optimizers.Adam(learning_rate=1E-3),\n        loss=keras.losses.mean_squared_error,\n        weighted_metrics=[\n            keras.metrics.MeanSquaredError(name='mse'),\n            keras.metrics.MeanAbsoluteError(name='mae')\n        ]\n    )\n\n    return model\n\n",
+    "Flagged": true,
+    "SerialisedDir": {
+        "StandardScalerInput": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\pickled\\StandardScalerInput--2024-03-08--00-02.pickle",
+        "StandardScalerOutput": "C:\\Users\\Shrey\\OneDrive\\Documents\\GitHub\\msci-project\\labbook\\pickled\\StandardScalerOutput--2024-03-08--00-02.pickle"
+    }
+}

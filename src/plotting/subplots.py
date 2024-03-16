@@ -11,7 +11,6 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 __all__ = [
-    'PLOT_DIR',
     'Style',
     'Subplots'
 ]
@@ -28,6 +27,7 @@ import pathlib
 import numpy as np
 import numpy.typing as npt
 
+from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 
@@ -36,10 +36,7 @@ if TYPE_CHECKING:
     from src.ana.spectrum import Spectrum
 
 
-PLOT_DIR = pathlib.Path('./figures/')
-
-
-def _init_axs_formatting(ax: Axes, fontsize: int) -> None:
+def _init_axs_formatting(fig: Figure, ax: Axes, fontsize: int) -> None:
     """\
     Sets the formatting of the plot axes using the specifications in the
     `PLOT_FORMATTING` dictionary.
@@ -85,7 +82,7 @@ def _init_axs_formatting(ax: Axes, fontsize: int) -> None:
     # )
 
     # Tight layout
-    plt.tight_layout()
+    fig.tight_layout()
 
 
 class Style(enum.Enum):
@@ -220,7 +217,11 @@ class Subplots:
             self.axs = np.asarray([self.axs])
 
         for ax in self.axs:
-            _init_axs_formatting(ax=ax, fontsize=int(self.fontsize))
+            _init_axs_formatting(
+                fig=self.fig,
+                ax=ax,
+                fontsize=int(self.fontsize)
+            )
 
     def set_ax_labels(
             self,
@@ -245,7 +246,7 @@ class Subplots:
         """
         self.axs[ax_idx].set_title(
             title,
-            fontsize=self.fontsize * 1.5
+            fontsize=int(self.fontsize * 1.2)
         )
         self.axs[ax_idx].set_xlabel(
             x_label,
@@ -258,7 +259,7 @@ class Subplots:
             labelpad=15
         )
 
-        plt.tight_layout()
+        self.fig.tight_layout()
 
     def set_energy_xy_labels(
             self,
@@ -494,7 +495,7 @@ class Subplots:
         legend.get_frame().set_linewidth(0)
 
     def legend(self, ax_idx: int) -> None:
-        """
+        """\
         Add a legend on a selected axes.
 
         Args
@@ -503,6 +504,41 @@ class Subplots:
             Axes index on the subplots.
         """
         self._add_legend(ax=self.axs[ax_idx])            
+
+    def fig_legend(
+            self,
+            ax_idx: int,
+            *,
+            loc: str | tuple[float, float] = 'lower center',
+            anchor: tuple[float, float] = (0.5, -0.1),
+            n_cols: int | None = None
+        ) -> None:
+        """\
+        Adds a legend below the figure.
+
+        Args
+        ----
+        ax_idx: int
+            Axes index on the subplots.
+        """
+        handles, labels = self.axs[ax_idx].get_legend_handles_labels()
+
+        if n_cols is None:
+            n_cols = len(labels)
+        
+        self.fig.legend(
+            handles=handles,
+            labels=labels,
+            ncol=n_cols,
+            # Appearance
+            fontsize=int(self.fontsize * 1.2),
+            # Location
+            loc=loc,
+            bbox_to_anchor=anchor,
+            bbox_transform=self.fig.transFigure
+        )
+
+        self.fig.tight_layout()
 
     @staticmethod
     def show() -> None:
@@ -514,6 +550,7 @@ class Subplots:
     def save_plot(
             self,
             figname: str,
+            plot_dir: str,
             force: bool = False,
             verbose: bool = True
         ) -> None:
@@ -526,10 +563,12 @@ class Subplots:
         figname: str
             Name of the figure, and also the name of the file. Best practice: do
             not include spaces in the name use '_' instead.
+        plot_dir: str
+            ...
         verbose: bool
             Prints out information if set to `True`. Defaults to `True`.
         """
-        filedir = PLOT_DIR / (figname + '.png')
+        filedir = pathlib.Path(plot_dir) / (figname + '.png')
 
         response = 'y'
 
@@ -547,7 +586,8 @@ class Subplots:
                 transparent=False,
                 # format='png',
                 # metadata=   Would be pretty cool to have image metadata...
-                dpi=200
+                dpi=200,
+                bbox_inches='tight'
             )
 
             if verbose:
