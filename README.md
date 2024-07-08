@@ -1,6 +1,10 @@
 # Using deep learning techniques to measure neutrino oscillations
 
-**Project Supervisors**: Prof. Ryan Nichol and Dr. Andreas Korn
+**Important Note**: Work from this project is migrating over to ![nu](https://github.com/aditya-marathe/nu) (title pending...) which will be the most up-to-date version. This repo will not be modfied further. (08/07/2024)
+
+---
+
+**Project Supervisor**: Prof. Ryan Nichol
 
 ## Background
 
